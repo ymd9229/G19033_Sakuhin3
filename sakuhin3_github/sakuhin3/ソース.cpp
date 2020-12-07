@@ -9,11 +9,15 @@
 #define GAME_FPS			60
 #define PATH_MAX			255
 #define NAME_MAX			255
-#define PLAYER_WALK_DIV_WIDTH  80
-#define PLAYER_WALK_DIV_HEIGHT  120
-#define PLAYER_WALK_DIV_TATE   8
-#define PLAYER_WALK_DIV_YOKO   1
-#define PLAYER_WALK_DIV_NUM   PLAYER_WALK_DIV_TATE * PLAYER_WALK_DIV_YOKO
+#define PLAYER_DIV_WIDTH  80
+#define PLAYER_DIV_HEIGHT  120
+#define PLAYER_DIV_TATE   8
+#define PLAYER_DIV_YOKO   3
+#define PLAYER_DIV_NUM   PLAYER_DIV_TATE * PLAYER_DIV_YOKO
+#define PLAYER_DIV_STOP_R   16
+#define PLAYER_DIV_STOP_L   17
+#define PLAYER_DIV_WALK_R 0
+#define PLAYER_DIV_WALK_L 8
 
 #define MAP_DIV_WIDTH     80
 #define MAP_DIV_HEIGHT    80
@@ -22,7 +26,7 @@
 #define MAP_DIV_NUM  MAP_DIV_TATE * MAP_DIV_YOKO
 
 #define GAME_MAP_TATE_MAX   9
-#define GAME_MAP_YOKO_MAX   16
+#define GAME_MAP_YOKO_MAX   32
 #define GAME_MAP_KIND_MAX  2
 
 #define STAGE_MAX 5
@@ -41,6 +45,31 @@ enum GAME_MAP_KIND
 	ad = 3,
 	ae = 4,
 };
+
+enum GAME_SCENE {
+	GAME_SCENE_START,
+	GAME_SCENE_PLAY,
+	GAME_SCENE_END,
+};
+
+enum PLAYER_STATUS
+{
+	PLAYER_MOVE_R,
+	PLAYER_MOVE_L,
+	PLAYER_STOP,
+};
+
+enum MUKI
+{
+	MUKI_R,
+	MUKI_L,
+};
+
+typedef struct STRUCT_I_POINT
+{
+	int x = -1;
+	int y = -1;
+}iPOINT;
 
 typedef struct STRUCT_IMAGE  
 {
@@ -77,6 +106,7 @@ typedef struct STRUCT_MAP
 	int y;
 	int width;
 	int height;
+	RECT coll;
 }MAP;
 
 typedef struct STRUCT_PLAYER
@@ -86,13 +116,18 @@ typedef struct STRUCT_PLAYER
 	int width;
 	int height;
 	char path[PATH_MAX];
-	int handle[PLAYER_WALK_DIV_NUM];
+	int handle[PLAYER_DIV_NUM];
 	int CenterX;
 	int CenterY;
 	int status;
+	int muki;
 	BOOL IsDraw;
 	RECT coll;
 	CHANGE_IMAGE change;
+	iPOINT CollBeforePt;
+	BOOL CanMove = TRUE;
+	BOOL IsMove = FALSE;
+	BOOL IsScroll = FALSE;
 }PLAYER;
 
 
@@ -110,17 +145,20 @@ int AllKeyState[256] = { 0 };		//すべてのキーの状態が入る
 int OldAllKeyState[256] = { 0 };	//すべてのキーの状態(直前)が入る
 int GameScene;		//ゲームシーンを管理
 int stage;
+int gravity;
+int WalkCheckR;
+int WalkCheckL;
 
 GAME_MAP_KIND stage1Data[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX]{
-	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
-	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
-	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
-	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
-	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
-	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
-	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
-	aa,ab,ac,ab,ad,ae,aa,ab,ac,ab,ac,ab,ad,ae,ae,ae,
-	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
+	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
+	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
+	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
+	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
+	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
+	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
+	aa,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ad,
+	aa,ab,ac,ab,ad,aa,aa,ab,ac,ab,ac,ab,ad,aa,aa,aa,aa,ab,ac,ab,ad,aa,aa,ab,ac,ab,ac,ab,ad,aa,aa,aa,
+	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
 };
 
 VOID MY_FPS_UPDATE(VOID);			//FPS値を計測、更新する関数
@@ -146,15 +184,15 @@ BOOL MY_LOAD_IMAGE(VOID);		//画像をまとめて読み込む関数
 VOID MY_DELETE_IMAGE(VOID);		//画像をまとめて削除する関数
 
 VOID COLL_PROC(VOID);
+VOID STAGE_SCROLL(VOID);
 BOOL MY_CHECK_RECT_COLL(RECT, RECT);
+BOOL MY_CHECK_MAP1_COLL(RECT);
+BOOL MY_CHECK_MAP1_TOP_COLL(RECT);
+BOOL MY_CHECK_TOP_COLL(RECT,RECT);
 
-enum GAME_SCENE {
-	GAME_SCENE_START,
-	GAME_SCENE_PLAY,
-	GAME_SCENE_END,
-};	//ゲームのシーン
 
-//########## プログラムで最初に実行される関数 ##########
+
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
 	ChangeWindowMode(TRUE);			//ウィンドウモードに設定
@@ -237,9 +275,8 @@ VOID MY_FPS_WAIT(VOID)
 
 VOID MY_ALL_KEYDOWN_UPDATE(VOID)
 {
-	char TempKey[256];	//一時的に、現在のキーの入力状態を格納する
-
-	//直前のキー入力をとっておく
+	char TempKey[256];	
+	
 	for (int i = 0; i < 256; i++)
 	{
 		OldAllKeyState[i] = AllKeyState[i];
@@ -321,10 +358,13 @@ VOID MY_START_PROC(VOID)
 	{
 		player.IsDraw = TRUE;
 		player.x = 0;
-		player.y = 380;
+		player.y = 0;
 		player.CenterX = player.x + player.width / 2;
 		player.CenterY = player.y + player.height / 2;
+		player.CollBeforePt.x = player.CenterX;
+		player.CollBeforePt.y = player.CenterY;
 		stage = 1;
+		gravity = 5;
 		GameScene = GAME_SCENE_PLAY;
 	}
 	
@@ -355,22 +395,51 @@ VOID MY_PLAY(VOID)
 //プレイ画面の処理
 VOID MY_PLAY_PROC(VOID)
 {
-	player.CenterX = player.x + player.width / 2;
-	player.CenterY = player.y + player.height / 2;
-	if (MY_KEY_DOWN(KEY_INPUT_UP) == TRUE)
+	player.IsMove = FALSE;
+	if (player.CanMove == TRUE)
 	{
+		if (MY_KEY_DOWN(KEY_INPUT_UP) == TRUE)
+		{
+		}
+		if (MY_KEY_DOWN(KEY_INPUT_RIGHT) == TRUE && MY_KEY_DOWN(KEY_INPUT_LEFT) != TRUE)
+		{
+			if (player.IsScroll == FALSE)
+			{
+				player.CenterX += 5;
+			}
+			player.IsMove = TRUE;
+			player.status = PLAYER_MOVE_R;
+			player.muki = MUKI_R;
+		}
+		if (MY_KEY_DOWN(KEY_INPUT_LEFT) == TRUE && MY_KEY_DOWN(KEY_INPUT_RIGHT) != TRUE)
+		{
+			if (player.x > 0)
+			{
+				player.CenterX -= 5;
+			}
+			player.IsMove = TRUE;
+			player.status = PLAYER_MOVE_L;
+			player.muki = MUKI_L;
+		}
+		if (MY_KEY_DOWN(KEY_INPUT_DOWN) == TRUE)
+		{
+		}
+		
 	}
-	if (MY_KEY_DOWN(KEY_INPUT_RIGHT) == TRUE)
+	if (MY_CHECK_MAP1_TOP_COLL(player.coll) == FALSE)
 	{
-		player.x += 5;
+		player.CenterY += gravity;
+		player.IsMove = TRUE;
 	}
-	if (MY_KEY_DOWN(KEY_INPUT_LEFT) == TRUE)
+	
+	player.x = player.CenterX - player.width / 2;
+	player.y = player.CenterY - player.height / 2;
+	STAGE_SCROLL();
+	if (MY_KEY_DOWN(KEY_INPUT_RIGHT) != TRUE && MY_KEY_DOWN(KEY_INPUT_LEFT) != TRUE)
 	{
-		player.x -= 5;
+		player.status = PLAYER_STOP;
 	}
-	if (MY_KEY_DOWN(KEY_INPUT_DOWN) == TRUE)
-	{
-	}
+	COLL_PROC();
 	if (MY_KEY_DOWN(KEY_INPUT_SPACE) == TRUE)
 	{
 		GameScene = GAME_SCENE_END;
@@ -386,24 +455,72 @@ VOID MY_PLAY_DRAW(VOID)
 	if (player.IsDraw == TRUE)
 	{
 		DrawGraph(
-			player.CenterX,
-			player.CenterY,
+			player.x,
+			player.y,
 			player.handle[player.change.NowImage],
 			TRUE);
 		player.change.CntMax = 20;
-		if (player.change.cnt < player.change.CntMax)
+
+		if (player.status == PLAYER_MOVE_R)
+		{
+			WalkCheckR++;
+			WalkCheckL = 0;
+			if (WalkCheckR == 1)
+			{
+				player.change.cnt = 20;
+			}
+		}
+		if (player.status == PLAYER_MOVE_L)
+		{
+			WalkCheckR = 0;
+			WalkCheckL++;
+			if (WalkCheckL == 1)
+			{
+				player.change.cnt = 20;
+			}
+		}
+
+		if (player.status == PLAYER_STOP)
+		{
+			if(player.muki == MUKI_R)
+			player.change.NowImage = PLAYER_DIV_STOP_R;
+			if (player.muki == MUKI_L)
+			player.change.NowImage = PLAYER_DIV_STOP_L;
+		}
+		else if (player.change.cnt < player.change.CntMax)
 		{
 			player.change.cnt++;
 		}
 		else
 		{
-			if (player.change.NowImage < PLAYER_WALK_DIV_NUM - 1)
+			if (player.status == PLAYER_MOVE_R)
 			{
-				player.change.NowImage++;
+				if (player.change.NowImage < PLAYER_DIV_WALK_R + PLAYER_DIV_TATE -1)
+				{
+					player.change.NowImage++;
+				}
+				else
+				{
+					player.change.NowImage = PLAYER_DIV_WALK_R;
+				}
 			}
-			else
+			if (player.status == PLAYER_MOVE_L)
 			{
-				player.change.NowImage = 0;
+				WalkCheckR = 0;
+				WalkCheckL++;
+				if (WalkCheckL == 1)
+				{
+					player.change.cnt = 20;
+				}
+				if (player.change.NowImage < PLAYER_DIV_WALK_L + PLAYER_DIV_TATE - 1 && 
+					player.change.NowImage >= PLAYER_DIV_WALK_L)
+				{
+					player.change.NowImage++;
+				}
+				else
+				{
+					player.change.NowImage = PLAYER_DIV_WALK_L;
+				}
 			}
 			player.change.cnt = 0;
 		}
@@ -419,14 +536,15 @@ VOID MY_PLAY_DRAW(VOID)
 				TRUE);
 		}
 	}
+	DrawBox(player.coll.left,player.coll.top,player.coll.right,player.coll.bottom, GetColor(0, 0, 255), FALSE);
 	return;
 }
 
-//エンド画面
+
 VOID MY_END(VOID)
 {
-	MY_END_PROC();	//エンド画面の処理
-	MY_END_DRAW();	//エンド画面の描画
+	MY_END_PROC();	
+	MY_END_DRAW();	
 	return;
 }
 
@@ -440,7 +558,7 @@ VOID MY_END_PROC(VOID)
 	return;
 }
 
-//エンド画面の描画
+
 VOID MY_END_DRAW(VOID)
 {
 	
@@ -472,15 +590,10 @@ BOOL MY_LOAD_IMAGE(VOID)
 
 	LoadDivGraph(
 		IMAGE_PLAYER_PATH,
-		PLAYER_WALK_DIV_NUM, PLAYER_WALK_DIV_TATE, PLAYER_WALK_DIV_YOKO,
-		PLAYER_WALK_DIV_WIDTH, PLAYER_WALK_DIV_HEIGHT,
+		PLAYER_DIV_NUM, PLAYER_DIV_TATE, PLAYER_DIV_YOKO,
+		PLAYER_DIV_WIDTH, PLAYER_DIV_HEIGHT,
 		&player.handle[0]);
 	GetGraphSize(player.handle[0], &player.width, &player.height);
-
-	for (int i = 1; i < PLAYER_WALK_DIV_NUM; i++)
-	{
-		player.handle[i] = player.handle[i];
-	}
 
 	LoadDivGraph(
 		IMAGE_MAP1_PATH,
@@ -488,6 +601,7 @@ BOOL MY_LOAD_IMAGE(VOID)
 		MAP_DIV_WIDTH, MAP_DIV_HEIGHT,
 		&mapchip.handle[0]);
 	GetGraphSize(mapchip.handle[0], &mapchip.width, &mapchip.height);
+
 	for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
 	{
 		for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
@@ -516,8 +630,21 @@ VOID MY_DELETE_IMAGE(VOID)
 
 BOOL MY_CHECK_RECT_COLL(RECT a, RECT b)
 {
-	if (a.left < b.right &&
+	if (a.left <= b.right &&
 		a.top < b.bottom &&
+		a.right >= b.left &&
+		a.bottom > b.top
+		)
+	{
+		return TRUE;
+	}
+	return FALSE;
+}
+
+BOOL MY_CHECK_TOP_COLL(RECT a, RECT b)
+{
+	if (a.left  < b.right &&
+		a.top <= b.bottom &&
 		a.right > b.left &&
 		a.bottom > b.top
 		)
@@ -529,10 +656,108 @@ BOOL MY_CHECK_RECT_COLL(RECT a, RECT b)
 
 VOID COLL_PROC(VOID)
 {
-	player.coll.right = player.x + player.width;
-	player.coll.left = player.x;
+	player.coll.right = player.x + player.width - 25;
+	player.coll.left = player.x + 25;
 	player.coll.top = player.y;
 	player.coll.bottom = player.y + player.height;
 
+	for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
+	{
+		for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
+		{
+			stage1[tate][yoko].coll.left = stage1[tate][yoko].x;
+			stage1[tate][yoko].coll.right = stage1[tate][yoko].x + stage1[tate][yoko].width;
+			stage1[tate][yoko].coll.top = stage1[tate][yoko].y;
+			stage1[tate][yoko].coll.bottom = stage1[tate][yoko].y + stage1[tate][yoko].height;
+		}
+	}
+	player.CanMove = TRUE;
+	if (MY_CHECK_MAP1_COLL(player.coll) == TRUE)
+	{
+		player.CenterX = player.CollBeforePt.x;
+		player.CenterY = player.CollBeforePt.y;
+		player.x = player.CenterX - player.width / 2;
+		player.y = player.CenterY - player.height / 2;
 
+		player.CanMove = FALSE;
+	}
+	if (player.CanMove == TRUE && player.IsMove == TRUE)
+	{
+		player.CollBeforePt.x = player.CenterX;
+		player.CollBeforePt.y = player.CenterY;
+	}
+	
+	
+}
+
+BOOL MY_CHECK_MAP1_COLL(RECT a)
+{
+	for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
+	{
+		for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
+		{
+			if (MY_CHECK_RECT_COLL(stage1[tate][yoko].coll, a) == TRUE)
+			{
+				if (stage1[tate][yoko].kind != ae)
+				{
+					return TRUE;
+				}
+			}
+		}
+	}
+	return FALSE;
+}
+
+BOOL MY_CHECK_MAP1_TOP_COLL(RECT a)
+{
+	for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
+	{
+		for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
+		{
+			if (MY_CHECK_TOP_COLL(stage1[tate][yoko].coll, a) == TRUE)
+			{
+				if (stage1[tate][yoko].kind != ae)
+				{
+					return TRUE;
+				}
+			}
+		}
+	}
+	return FALSE;
+}
+
+VOID STAGE_SCROLL(VOID)
+{
+	if (player.CenterX + player.width > GAME_WIDTH / 2)
+	{
+		if (player.IsMove == TRUE)
+		{
+			player.IsScroll = TRUE;
+			for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
+			{
+				for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
+				{
+					stage1[tate][yoko].x -= 5;
+				}
+			}
+		}
+	}
+	else if (player.x <= 0 && player.status == PLAYER_MOVE_L)
+	{
+		if (player.IsMove == TRUE)
+		{
+			player.IsScroll = TRUE;
+			for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
+			{
+				for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
+				{
+					stage1[tate][yoko].x += 5;
+				}
+			}
+		}
+	}
+	else
+	{
+		player.IsScroll = FALSE;
+	}
 }
