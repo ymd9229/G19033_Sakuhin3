@@ -123,6 +123,7 @@ typedef struct STRUCT_PLAYER
 	int muki;
 	BOOL IsDraw;
 	RECT coll;
+	RECT CheckColl;
 	CHANGE_IMAGE change;
 	iPOINT CollBeforePt;
 	BOOL CanMove = TRUE;
@@ -426,11 +427,7 @@ VOID MY_PLAY_PROC(VOID)
 		}
 		
 	}
-	if (MY_CHECK_MAP1_TOP_COLL(player.coll) == FALSE)
-	{
-		player.CenterY += gravity;
-		player.IsMove = TRUE;
-	}
+	
 	
 	player.x = player.CenterX - player.width / 2;
 	player.y = player.CenterY - player.height / 2;
@@ -630,21 +627,8 @@ VOID MY_DELETE_IMAGE(VOID)
 
 BOOL MY_CHECK_RECT_COLL(RECT a, RECT b)
 {
-	if (a.left <= b.right &&
+	if (a.left < b.right &&
 		a.top < b.bottom &&
-		a.right >= b.left &&
-		a.bottom > b.top
-		)
-	{
-		return TRUE;
-	}
-	return FALSE;
-}
-
-BOOL MY_CHECK_TOP_COLL(RECT a, RECT b)
-{
-	if (a.left  < b.right &&
-		a.top <= b.bottom &&
 		a.right > b.left &&
 		a.bottom > b.top
 		)
@@ -661,6 +645,15 @@ VOID COLL_PROC(VOID)
 	player.coll.top = player.y;
 	player.coll.bottom = player.y + player.height;
 
+	player.CheckColl.right = player.coll.right;
+	player.CheckColl.left = player.coll.left;
+	player.CheckColl.top = player.coll.top;
+	player.CheckColl.bottom = player.coll.bottom + 1;
+	if (MY_CHECK_MAP1_COLL(player.CheckColl) == FALSE)
+	{
+		player.CenterY += gravity;
+	}
+	
 	for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
 	{
 		for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
@@ -681,7 +674,7 @@ VOID COLL_PROC(VOID)
 
 		player.CanMove = FALSE;
 	}
-	if (player.CanMove == TRUE && player.IsMove == TRUE)
+	if (player.CanMove == TRUE)
 	{
 		player.CollBeforePt.x = player.CenterX;
 		player.CollBeforePt.y = player.CenterY;
@@ -708,31 +701,14 @@ BOOL MY_CHECK_MAP1_COLL(RECT a)
 	return FALSE;
 }
 
-BOOL MY_CHECK_MAP1_TOP_COLL(RECT a)
-{
-	for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
-	{
-		for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
-		{
-			if (MY_CHECK_TOP_COLL(stage1[tate][yoko].coll, a) == TRUE)
-			{
-				if (stage1[tate][yoko].kind != ae)
-				{
-					return TRUE;
-				}
-			}
-		}
-	}
-	return FALSE;
-}
 
 VOID STAGE_SCROLL(VOID)
 {
 	if (player.CenterX + player.width > GAME_WIDTH / 2)
 	{
+		player.IsScroll = TRUE;
 		if (player.IsMove == TRUE)
 		{
-			player.IsScroll = TRUE;
 			for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
 			{
 				for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
@@ -744,9 +720,10 @@ VOID STAGE_SCROLL(VOID)
 	}
 	else if (player.x <= 0 && player.status == PLAYER_MOVE_L)
 	{
+		player.IsScroll = TRUE;
 		if (player.IsMove == TRUE)
 		{
-			player.IsScroll = TRUE;
+			
 			for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
 			{
 				for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
