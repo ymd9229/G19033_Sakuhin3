@@ -123,10 +123,13 @@ typedef struct STRUCT_PLAYER
 	int muki;
 	BOOL IsDraw;
 	RECT coll;
-	RECT CheckColl;
+	RECT CheckBottomColl;
+	RECT CheckRightColl;
+	RECT CheckLeftColl;
 	CHANGE_IMAGE change;
-	iPOINT CollBeforePt;
 	BOOL CanMove = TRUE;
+	BOOL CanRightMove = TRUE;
+	BOOL CanLeftMove = TRUE;
 	BOOL IsMove = FALSE;
 	BOOL IsScroll = FALSE;
 }PLAYER;
@@ -183,7 +186,7 @@ VOID MY_END_DRAW(VOID);		//エンド画面の描画
 
 BOOL MY_LOAD_IMAGE(VOID);		//画像をまとめて読み込む関数
 VOID MY_DELETE_IMAGE(VOID);		//画像をまとめて削除する関数
-
+VOID PLAYER_MOVE(VOID);
 VOID COLL_PROC(VOID);
 VOID STAGE_SCROLL(VOID);
 BOOL MY_CHECK_RECT_COLL(RECT, RECT);
@@ -330,7 +333,6 @@ BOOL MY_KEY_UP(int KEY_INPUT_)
 
 BOOL MY_KEYDOWN_KEEP(int KEY_INPUT_, int DownTime)
 {
-	
 	int UpdateTime = DownTime * GAME_FPS;
 
 	if (AllKeyState[KEY_INPUT_] > UpdateTime)
@@ -362,8 +364,6 @@ VOID MY_START_PROC(VOID)
 		player.y = 0;
 		player.CenterX = player.x + player.width / 2;
 		player.CenterY = player.y + player.height / 2;
-		player.CollBeforePt.x = player.CenterX;
-		player.CollBeforePt.y = player.CenterY;
 		stage = 1;
 		gravity = 5;
 		GameScene = GAME_SCENE_PLAY;
@@ -396,46 +396,8 @@ VOID MY_PLAY(VOID)
 //プレイ画面の処理
 VOID MY_PLAY_PROC(VOID)
 {
-	player.IsMove = FALSE;
-	if (player.CanMove == TRUE)
-	{
-		if (MY_KEY_DOWN(KEY_INPUT_UP) == TRUE)
-		{
-		}
-		if (MY_KEY_DOWN(KEY_INPUT_RIGHT) == TRUE && MY_KEY_DOWN(KEY_INPUT_LEFT) != TRUE)
-		{
-			if (player.IsScroll == FALSE)
-			{
-				player.CenterX += 5;
-			}
-			player.IsMove = TRUE;
-			player.status = PLAYER_MOVE_R;
-			player.muki = MUKI_R;
-		}
-		if (MY_KEY_DOWN(KEY_INPUT_LEFT) == TRUE && MY_KEY_DOWN(KEY_INPUT_RIGHT) != TRUE)
-		{
-			if (player.x > 0)
-			{
-				player.CenterX -= 5;
-			}
-			player.IsMove = TRUE;
-			player.status = PLAYER_MOVE_L;
-			player.muki = MUKI_L;
-		}
-		if (MY_KEY_DOWN(KEY_INPUT_DOWN) == TRUE)
-		{
-		}
-		
-	}
-	
-	
-	player.x = player.CenterX - player.width / 2;
-	player.y = player.CenterY - player.height / 2;
+	PLAYER_MOVE();
 	STAGE_SCROLL();
-	if (MY_KEY_DOWN(KEY_INPUT_RIGHT) != TRUE && MY_KEY_DOWN(KEY_INPUT_LEFT) != TRUE)
-	{
-		player.status = PLAYER_STOP;
-	}
 	COLL_PROC();
 	if (MY_KEY_DOWN(KEY_INPUT_SPACE) == TRUE)
 	{
@@ -531,9 +493,19 @@ VOID MY_PLAY_DRAW(VOID)
 				stage1[tate][yoko].y,
 				mapchip.handle[stage1[tate][yoko].kind],
 				TRUE);
+			DrawBox(stage1[tate][yoko].x, stage1[tate][yoko].y,
+					stage1[tate][yoko].x + stage1[tate][yoko].width,
+					stage1[tate][yoko].y + stage1[tate][yoko].height,
+					GetColor(0, 255, 255), FALSE);
 		}
 	}
 	DrawBox(player.coll.left,player.coll.top,player.coll.right,player.coll.bottom, GetColor(0, 0, 255), FALSE);
+	DrawBox(player.CheckRightColl.left, player.CheckRightColl.top,
+			player.CheckRightColl.right, player.CheckRightColl.bottom,
+			GetColor(255, 0, 0), FALSE);
+	DrawBox(player.CheckLeftColl.left, player.CheckLeftColl.top,
+			player.CheckLeftColl.right, player.CheckLeftColl.bottom,
+			GetColor(0, 255, 0), FALSE);
 	return;
 }
 
@@ -625,6 +597,48 @@ VOID MY_DELETE_IMAGE(VOID)
 	return;
 }
 
+VOID PLAYER_MOVE(VOID)
+{
+	player.IsMove = FALSE;
+	if (player.CanMove == TRUE)
+	{
+		if (MY_KEY_DOWN(KEY_INPUT_UP) == TRUE)
+		{
+		}
+		if (MY_KEY_DOWN(KEY_INPUT_RIGHT) == TRUE && MY_KEY_DOWN(KEY_INPUT_LEFT) != TRUE)
+		{
+			if (player.IsScroll == FALSE && player.CanRightMove == TRUE)
+			{
+				player.CenterX += 5;
+			}
+			player.IsMove = TRUE;
+			player.status = PLAYER_MOVE_R;
+			player.muki = MUKI_R;
+		}
+		if (MY_KEY_DOWN(KEY_INPUT_LEFT) == TRUE && MY_KEY_DOWN(KEY_INPUT_RIGHT) != TRUE)
+		{
+			if (player.x > 0 && player.CanLeftMove == TRUE)
+			{
+				player.CenterX -= 5;
+			}
+			player.IsMove = TRUE;
+			player.status = PLAYER_MOVE_L;
+			player.muki = MUKI_L;
+		}
+		if (MY_KEY_DOWN(KEY_INPUT_DOWN) == TRUE)
+		{
+		}
+
+	}
+	player.x = player.CenterX - player.width / 2;
+	player.y = player.CenterY - player.height / 2;
+
+	if (MY_KEY_DOWN(KEY_INPUT_RIGHT) != TRUE && MY_KEY_DOWN(KEY_INPUT_LEFT) != TRUE)
+	{
+		player.status = PLAYER_STOP;
+	}
+}
+
 BOOL MY_CHECK_RECT_COLL(RECT a, RECT b)
 {
 	if (a.left < b.right &&
@@ -645,15 +659,25 @@ VOID COLL_PROC(VOID)
 	player.coll.top = player.y;
 	player.coll.bottom = player.y + player.height;
 
-	player.CheckColl.right = player.coll.right;
-	player.CheckColl.left = player.coll.left;
-	player.CheckColl.top = player.coll.top;
-	player.CheckColl.bottom = player.coll.bottom + 1;
-	if (MY_CHECK_MAP1_COLL(player.CheckColl) == FALSE)
-	{
-		player.CenterY += gravity;
-	}
-	
+	player.CheckBottomColl.right = player.coll.right;
+	player.CheckBottomColl.left = player.coll.left;
+	player.CheckBottomColl.top = player.coll.top;
+	player.CheckBottomColl.bottom = player.coll.bottom + 1;
+
+	player.CheckRightColl.right = player.coll.right + 1;
+	player.CheckRightColl.left = player.coll.left + 5;
+	player.CheckRightColl.top = player.coll.top;
+	player.CheckRightColl.bottom = player.coll.bottom;
+
+	player.CheckLeftColl.right = player.coll.right - 5;
+	player.CheckLeftColl.left = player.coll.left - 1;
+	player.CheckLeftColl.top = player.coll.top;
+	player.CheckLeftColl.bottom = player.coll.bottom;
+
+	player.CanMove = TRUE;
+	player.CanRightMove = TRUE;
+	player.CanLeftMove = TRUE;
+
 	for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
 	{
 		for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
@@ -664,23 +688,22 @@ VOID COLL_PROC(VOID)
 			stage1[tate][yoko].coll.bottom = stage1[tate][yoko].y + stage1[tate][yoko].height;
 		}
 	}
-	player.CanMove = TRUE;
-	if (MY_CHECK_MAP1_COLL(player.coll) == TRUE)
-	{
-		player.CenterX = player.CollBeforePt.x;
-		player.CenterY = player.CollBeforePt.y;
-		player.x = player.CenterX - player.width / 2;
-		player.y = player.CenterY - player.height / 2;
 
-		player.CanMove = FALSE;
-	}
-	if (player.CanMove == TRUE)
+	if (MY_CHECK_MAP1_COLL(player.CheckBottomColl) == FALSE)
 	{
-		player.CollBeforePt.x = player.CenterX;
-		player.CollBeforePt.y = player.CenterY;
+		player.CenterY += gravity;
+	}
+	if (MY_CHECK_MAP1_COLL(player.CheckRightColl) == TRUE)
+	{
+		player.CanRightMove = FALSE;
+	}
+	if (MY_CHECK_MAP1_COLL(player.CheckLeftColl) == TRUE)
+	{
+		player.CanLeftMove = FALSE;
 	}
 	
-	
+	player.x = player.CenterX - player.width / 2;
+	player.y = player.CenterY - player.height / 2;
 }
 
 BOOL MY_CHECK_MAP1_COLL(RECT a)
@@ -707,7 +730,7 @@ VOID STAGE_SCROLL(VOID)
 	if (player.CenterX + player.width > GAME_WIDTH / 2)
 	{
 		player.IsScroll = TRUE;
-		if (player.IsMove == TRUE)
+		if (player.IsMove == TRUE && player.CanRightMove == TRUE)
 		{
 			for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
 			{
@@ -721,9 +744,8 @@ VOID STAGE_SCROLL(VOID)
 	else if (player.x <= 0 && player.status == PLAYER_MOVE_L)
 	{
 		player.IsScroll = TRUE;
-		if (player.IsMove == TRUE)
+		if (player.IsMove == TRUE && player.CanLeftMove == TRUE)
 		{
-			
 			for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
 			{
 				for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
