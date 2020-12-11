@@ -72,6 +72,12 @@ typedef struct STRUCT_I_POINT
 	int y = -1;
 }iPOINT;
 
+typedef struct STRUCT_CNT
+{
+	int cnt;
+	int CntMax;
+}CNT;
+
 typedef struct STRUCT_IMAGE  
 {
 	char path[PATH_MAX];		//パス
@@ -154,6 +160,7 @@ int OldAllKeyState[256] = { 0 };	//すべてのキーの状態(直前)が入る
 int GameScene;		//ゲームシーンを管理
 int stage;
 int gravity;
+CNT FallTime;
 int WalkCheckR;
 int WalkCheckL;
 
@@ -370,7 +377,8 @@ VOID MY_START_PROC(VOID)
 		player.CenterX = player.x + player.width / 2;
 		player.CenterY = player.y + player.height / 2;
 		stage = 1;
-		gravity = 5;
+		gravity = 8;
+		FallTime.CntMax = 10;
 		GameScene = GAME_SCENE_PLAY;
 	}
 	
@@ -694,7 +702,7 @@ VOID COLL_PROC(VOID)
 	player.CheckBottomColl.right = player.coll.right;
 	player.CheckBottomColl.left = player.coll.left;
 	player.CheckBottomColl.top = player.coll.top;
-	player.CheckBottomColl.bottom = player.coll.bottom + 1;
+	player.CheckBottomColl.bottom = player.coll.bottom + gravity;
 
 	player.CheckRightColl.right = player.coll.right + 1;
 	player.CheckRightColl.left = player.coll.left + 5;
@@ -725,6 +733,20 @@ VOID COLL_PROC(VOID)
 	{
 		player.CenterY += gravity;
 		player.CanJump = FALSE;
+		if (FallTime.cnt < FallTime.CntMax)
+		{
+			FallTime.cnt++;
+		}
+		else
+		{
+			gravity += 1;
+			FallTime.cnt = 0;
+		}
+	}
+	else
+	{
+		FallTime.cnt = 0;
+		gravity = 5;
 	}
 	if (MY_CHECK_MAP1_COLL(player.CheckRightColl) == TRUE)
 	{
