@@ -54,9 +54,10 @@ enum GAME_SCENE {
 
 enum PLAYER_STATUS
 {
-	PLAYER_MOVE_R,
-	PLAYER_MOVE_L,
-	PLAYER_STOP,
+	PLAYER_STATUS_MOVE_R,
+	PLAYER_STATUS_MOVE_L,
+	PLAYER_STATUS_STOP,
+	PLAYER_STATUS_JUMP,
 };
 
 enum MUKI
@@ -121,6 +122,8 @@ typedef struct STRUCT_PLAYER
 	int CenterY;
 	int status;
 	int muki;
+	int JumpMax = 30;
+	int JumpCnt = 0;
 	BOOL IsDraw;
 	RECT coll;
 	RECT CheckBottomColl;
@@ -130,6 +133,7 @@ typedef struct STRUCT_PLAYER
 	BOOL CanMove = TRUE;
 	BOOL CanRightMove = TRUE;
 	BOOL CanLeftMove = TRUE;
+	BOOL CanJump = FALSE;
 	BOOL IsMove = FALSE;
 	BOOL IsScroll = FALSE;
 }PLAYER;
@@ -187,6 +191,7 @@ VOID MY_END_DRAW(VOID);		//ÉGÉìÉhâÊñ ÇÃï`âÊ
 BOOL MY_LOAD_IMAGE(VOID);		//âÊëúÇÇ‹Ç∆ÇﬂÇƒì«Ç›çûÇﬁä÷êî
 VOID MY_DELETE_IMAGE(VOID);		//âÊëúÇÇ‹Ç∆ÇﬂÇƒçÌèúÇ∑ÇÈä÷êî
 VOID PLAYER_MOVE(VOID);
+VOID PLAYER_JUMP(VOID);
 VOID COLL_PROC(VOID);
 VOID STAGE_SCROLL(VOID);
 BOOL MY_CHECK_RECT_COLL(RECT, RECT);
@@ -420,7 +425,7 @@ VOID MY_PLAY_DRAW(VOID)
 			TRUE);
 		player.change.CntMax = 20;
 
-		if (player.status == PLAYER_MOVE_R)
+		if (player.status == PLAYER_STATUS_MOVE_R)
 		{
 			WalkCheckR++;
 			WalkCheckL = 0;
@@ -429,7 +434,7 @@ VOID MY_PLAY_DRAW(VOID)
 				player.change.cnt = 20;
 			}
 		}
-		if (player.status == PLAYER_MOVE_L)
+		if (player.status == PLAYER_STATUS_MOVE_L)
 		{
 			WalkCheckR = 0;
 			WalkCheckL++;
@@ -439,7 +444,7 @@ VOID MY_PLAY_DRAW(VOID)
 			}
 		}
 
-		if (player.status == PLAYER_STOP)
+		if (player.status == PLAYER_STATUS_STOP)
 		{
 			if(player.muki == MUKI_R)
 			player.change.NowImage = PLAYER_DIV_STOP_R;
@@ -452,7 +457,7 @@ VOID MY_PLAY_DRAW(VOID)
 		}
 		else
 		{
-			if (player.status == PLAYER_MOVE_R)
+			if (player.status == PLAYER_STATUS_MOVE_R)
 			{
 				if (player.change.NowImage < PLAYER_DIV_WALK_R + PLAYER_DIV_TATE -1)
 				{
@@ -463,7 +468,7 @@ VOID MY_PLAY_DRAW(VOID)
 					player.change.NowImage = PLAYER_DIV_WALK_R;
 				}
 			}
-			if (player.status == PLAYER_MOVE_L)
+			if (player.status == PLAYER_STATUS_MOVE_L)
 			{
 				WalkCheckR = 0;
 				WalkCheckL++;
@@ -604,6 +609,10 @@ VOID PLAYER_MOVE(VOID)
 	{
 		if (MY_KEY_DOWN(KEY_INPUT_UP) == TRUE)
 		{
+			if (player.CanJump == TRUE)
+			{
+				player.status = PLAYER_STATUS_JUMP;
+			}
 		}
 		if (MY_KEY_DOWN(KEY_INPUT_RIGHT) == TRUE && MY_KEY_DOWN(KEY_INPUT_LEFT) != TRUE)
 		{
@@ -612,7 +621,10 @@ VOID PLAYER_MOVE(VOID)
 				player.CenterX += 5;
 			}
 			player.IsMove = TRUE;
-			player.status = PLAYER_MOVE_R;
+			if (player.status != PLAYER_STATUS_JUMP)
+			{
+				player.status = PLAYER_STATUS_MOVE_R;
+			}
 			player.muki = MUKI_R;
 		}
 		if (MY_KEY_DOWN(KEY_INPUT_LEFT) == TRUE && MY_KEY_DOWN(KEY_INPUT_RIGHT) != TRUE)
@@ -622,21 +634,41 @@ VOID PLAYER_MOVE(VOID)
 				player.CenterX -= 5;
 			}
 			player.IsMove = TRUE;
-			player.status = PLAYER_MOVE_L;
+			if (player.status != PLAYER_STATUS_JUMP)
+			{
+				player.status = PLAYER_STATUS_MOVE_L;
+			}
 			player.muki = MUKI_L;
 		}
 		if (MY_KEY_DOWN(KEY_INPUT_DOWN) == TRUE)
 		{
 		}
-
+		if (player.status == PLAYER_STATUS_JUMP)
+		{
+			PLAYER_JUMP();
+		}
 	}
 	player.x = player.CenterX - player.width / 2;
 	player.y = player.CenterY - player.height / 2;
 
-	if (MY_KEY_DOWN(KEY_INPUT_RIGHT) != TRUE && MY_KEY_DOWN(KEY_INPUT_LEFT) != TRUE)
+	if (MY_KEY_DOWN(KEY_INPUT_RIGHT) != TRUE && MY_KEY_DOWN(KEY_INPUT_LEFT) != TRUE && player.status != PLAYER_STATUS_JUMP)
 	{
-		player.status = PLAYER_STOP;
+		player.status = PLAYER_STATUS_STOP;
 	}
+}
+
+VOID PLAYER_JUMP(VOID)
+{
+	if (player.JumpCnt < player.JumpMax)
+	{
+		player.CenterY -= 10;
+	}
+	else
+	{
+		player.status = PLAYER_STATUS_STOP;
+		player.JumpCnt = 0;
+	}
+	player.JumpCnt++;
 }
 
 BOOL MY_CHECK_RECT_COLL(RECT a, RECT b)
@@ -677,7 +709,7 @@ VOID COLL_PROC(VOID)
 	player.CanMove = TRUE;
 	player.CanRightMove = TRUE;
 	player.CanLeftMove = TRUE;
-
+	player.CanJump = TRUE;
 	for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
 	{
 		for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
@@ -688,10 +720,11 @@ VOID COLL_PROC(VOID)
 			stage1[tate][yoko].coll.bottom = stage1[tate][yoko].y + stage1[tate][yoko].height;
 		}
 	}
-
+	
 	if (MY_CHECK_MAP1_COLL(player.CheckBottomColl) == FALSE)
 	{
 		player.CenterY += gravity;
+		player.CanJump = FALSE;
 	}
 	if (MY_CHECK_MAP1_COLL(player.CheckRightColl) == TRUE)
 	{
@@ -741,7 +774,7 @@ VOID STAGE_SCROLL(VOID)
 			}
 		}
 	}
-	else if (player.x <= 0 && player.status == PLAYER_MOVE_L)
+	else if (player.x <= 0 && player.status == PLAYER_STATUS_MOVE_L)
 	{
 		player.IsScroll = TRUE;
 		if (player.IsMove == TRUE && player.CanLeftMove == TRUE)
