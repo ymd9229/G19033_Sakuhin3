@@ -128,8 +128,9 @@ typedef struct STRUCT_PLAYER
 	int CenterY;
 	int status;
 	int muki;
-	int JumpMax = 30;
+	int JumpMax = 20;
 	int JumpCnt = 0;
+	int JumpRise = 10;
 	BOOL IsDraw;
 	RECT coll;
 	RECT CheckBottomColl;
@@ -377,7 +378,7 @@ VOID MY_START_PROC(VOID)
 		player.CenterX = player.x + player.width / 2;
 		player.CenterY = player.y + player.height / 2;
 		stage = 1;
-		gravity = 8;
+		gravity = 10;
 		FallTime.CntMax = 10;
 		GameScene = GAME_SCENE_PLAY;
 	}
@@ -669,12 +670,17 @@ VOID PLAYER_JUMP(VOID)
 {
 	if (player.JumpCnt < player.JumpMax)
 	{
-		player.CenterY -= 10;
+		player.CenterY -= player.JumpRise;
+		if (player.JumpCnt > 7 && player.JumpRise >= 0)
+		{
+			player.JumpRise--;
+		}
 	}
 	else
 	{
 		player.status = PLAYER_STATUS_STOP;
 		player.JumpCnt = 0;
+		player.JumpRise = 10;
 	}
 	player.JumpCnt++;
 }
@@ -714,6 +720,7 @@ VOID COLL_PROC(VOID)
 	player.CheckLeftColl.top = player.coll.top;
 	player.CheckLeftColl.bottom = player.coll.bottom;
 
+
 	player.CanMove = TRUE;
 	player.CanRightMove = TRUE;
 	player.CanLeftMove = TRUE;
@@ -731,22 +738,25 @@ VOID COLL_PROC(VOID)
 	
 	if (MY_CHECK_MAP1_COLL(player.CheckBottomColl) == FALSE)
 	{
-		player.CenterY += gravity;
 		player.CanJump = FALSE;
-		if (FallTime.cnt < FallTime.CntMax)
+		if (player.status != PLAYER_STATUS_JUMP)
 		{
-			FallTime.cnt++;
-		}
-		else
-		{
-			gravity += 1;
-			FallTime.cnt = 0;
+			player.CenterY += gravity;
+			if (FallTime.cnt < FallTime.CntMax)
+			{
+				FallTime.cnt++;
+			}
+			else
+			{
+				gravity += 1;	
+				FallTime.cnt = 0;
+			}
 		}
 	}
 	else
 	{
 		FallTime.cnt = 0;
-		gravity = 5;
+		gravity = 10;
 	}
 	if (MY_CHECK_MAP1_COLL(player.CheckRightColl) == TRUE)
 	{
@@ -756,6 +766,7 @@ VOID COLL_PROC(VOID)
 	{
 		player.CanLeftMove = FALSE;
 	}
+	
 	
 	player.x = player.CenterX - player.width / 2;
 	player.y = player.CenterY - player.height / 2;
