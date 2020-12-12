@@ -165,6 +165,7 @@ CNT FallTime;
 int WalkCheckR;
 int WalkCheckL;
 
+
 GAME_MAP_KIND stage1Data[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX]{
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
@@ -203,9 +204,9 @@ VOID PLAYER_JUMP(VOID);
 VOID COLL_PROC(VOID);
 VOID STAGE_SCROLL(VOID);
 BOOL MY_CHECK_RECT_COLL(RECT, RECT);
-BOOL MY_CHECK_MAP1_COLL(RECT);
-BOOL MY_CHECK_MAP1_TOP_COLL(RECT);
-BOOL MY_CHECK_TOP_COLL(RECT,RECT);
+BOOL MY_CHECK_MAP1_COLL(RECT,int*,int*);
+
+
 
 
 
@@ -735,8 +736,8 @@ VOID COLL_PROC(VOID)
 			stage1[tate][yoko].coll.bottom = stage1[tate][yoko].y + stage1[tate][yoko].height;
 		}
 	}
-	
-	if (MY_CHECK_MAP1_COLL(player.CheckBottomColl) == FALSE)
+	int x, y;
+	if (MY_CHECK_MAP1_COLL(player.CheckBottomColl,&x,&y) == FALSE)
 	{
 		player.CanJump = FALSE;
 		if (player.status != PLAYER_STATUS_JUMP)
@@ -755,14 +756,15 @@ VOID COLL_PROC(VOID)
 	}
 	else
 	{
+		player.CenterY = stage1[x][y].y - player.height / 2 - 1;
 		FallTime.cnt = 0;
 		gravity = 10;
 	}
-	if (MY_CHECK_MAP1_COLL(player.CheckRightColl) == TRUE)
+	if (MY_CHECK_MAP1_COLL(player.CheckRightColl, &x, &y) == TRUE)
 	{
 		player.CanRightMove = FALSE;
 	}
-	if (MY_CHECK_MAP1_COLL(player.CheckLeftColl) == TRUE)
+	if (MY_CHECK_MAP1_COLL(player.CheckLeftColl, &x, &y) == TRUE)
 	{
 		player.CanLeftMove = FALSE;
 	}
@@ -772,7 +774,7 @@ VOID COLL_PROC(VOID)
 	player.y = player.CenterY - player.height / 2;
 }
 
-BOOL MY_CHECK_MAP1_COLL(RECT a)
+BOOL MY_CHECK_MAP1_COLL(RECT a,int *x, int *y)
 {
 	for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
 	{
@@ -782,6 +784,8 @@ BOOL MY_CHECK_MAP1_COLL(RECT a)
 			{
 				if (stage1[tate][yoko].kind != ae)
 				{
+					*x = tate;
+					*y = yoko;
 					return TRUE;
 				}
 			}
