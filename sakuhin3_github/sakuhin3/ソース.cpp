@@ -29,9 +29,12 @@
 #define GAME_MAP_YOKO_MAX   32
 #define GAME_MAP_KIND_MAX  2
 
+#define PLAYER_TAMA_MAX 10
+
 #define STAGE_MAX 5
 
 #define IMAGE_PLAYER_PATH       TEXT(".\\IMAGE\\player.png")
+#define IMAGE_PLAYER_TAMA_PATH  TEXT(".\\IMAGE\\tama.png")
 #define IMAGE_TITLE_BACK_PATH   TEXT(".\\IMAGE\\TitleBack.png")
 #define IMAGE_TITLE_ROGO_PATH   TEXT(".\\IMAGE\\TitleRogo.png")
 #define IMAGE_STAGE1_BACK_PATH  TEXT(".\\IMAGE\\Stage1Back.png")
@@ -116,6 +119,14 @@ typedef struct STRUCT_MAP
 	RECT coll;
 }MAP;
 
+typedef struct STRUCT_PLAYER_ATTACK
+{
+	IMAGE image;
+	BOOL IsDraw;
+	CNT cnt;
+	int muki;
+}PLAYER_ATTACK;
+
 typedef struct STRUCT_PLAYER
 {
 	int x;
@@ -138,12 +149,17 @@ typedef struct STRUCT_PLAYER
 	RECT CheckLeftColl;
 	CHANGE_IMAGE change;
 	BOOL CanMove = TRUE;
+	BOOL CanAttack = TRUE;
+	CNT AttackInterval;
 	BOOL CanRightMove = TRUE;
 	BOOL CanLeftMove = TRUE;
 	BOOL CanJump = FALSE;
 	BOOL IsMove = FALSE;
 	BOOL IsScroll = FALSE;
+	PLAYER_ATTACK attack[PLAYER_TAMA_MAX];
 }PLAYER;
+
+
 
 
 IMAGE TitleBack;
@@ -206,8 +222,8 @@ VOID STAGE_SCROLL(VOID);
 BOOL MY_CHECK_RECT_COLL(RECT, RECT);
 BOOL MY_CHECK_MAP1_COLL(RECT,int*,int*);
 
-
-
+VOID PLAYER_ATTACK_PROC(VOID);
+VOID PLAYER_ATTACK_DRAW(VOID);
 
 
 
@@ -378,6 +394,7 @@ VOID MY_START_PROC(VOID)
 		player.y = 0;
 		player.CenterX = player.x + player.width / 2;
 		player.CenterY = player.y + player.height / 2;
+		player.AttackInterval.CntMax = 20;
 		stage = 1;
 		gravity = 10;
 		FallTime.CntMax = 10;
@@ -521,6 +538,7 @@ VOID MY_PLAY_DRAW(VOID)
 	DrawBox(player.CheckLeftColl.left, player.CheckLeftColl.top,
 			player.CheckLeftColl.right, player.CheckLeftColl.bottom,
 			GetColor(0, 255, 0), FALSE);
+	PLAYER_ATTACK_DRAW();
 	return;
 }
 
@@ -559,7 +577,9 @@ BOOL MY_LOAD_IMAGE(VOID)
 	strcpy_s(TitleBack.path, IMAGE_TITLE_BACK_PATH);
 	TitleBack.handle = LoadGraph(TitleBack.path);
 	GetGraphSize(TitleRogo.handle, &TitleRogo.width, &TitleRogo.height);	
-
+	strcpy_s(player.attack[0].image.path, IMAGE_PLAYER_TAMA_PATH);
+	player.attack[0].image.handle = LoadGraph(player.attack[0].image.path);
+	GetGraphSize(player.attack[0].image.handle, &player.attack[0].image.width, &player.attack[0].image.height);
 	for (int i = 1; i < STAGE_MAX; i++)
 	{
 		switch (i)
@@ -658,6 +678,7 @@ VOID PLAYER_MOVE(VOID)
 			PLAYER_JUMP();
 		}
 	}
+	PLAYER_ATTACK_PROC();
 	player.x = player.CenterX - player.width / 2;
 	player.y = player.CenterY - player.height / 2;
 
@@ -666,6 +687,8 @@ VOID PLAYER_MOVE(VOID)
 		player.status = PLAYER_STATUS_STOP;
 	}
 }
+
+
 
 VOID PLAYER_JUMP(VOID)
 {
@@ -684,6 +707,89 @@ VOID PLAYER_JUMP(VOID)
 		player.JumpRise = 10;
 	}
 	player.JumpCnt++;
+}
+
+VOID PLAYER_ATTACK_PROC(VOID)
+{
+	if (MY_KEY_DOWN(KEY_INPUT_V) == TRUE)
+	{
+		if (player.CanAttack == TRUE)
+		{
+			player.CanAttack = FALSE;
+			for (int i = 0; i < PLAYER_TAMA_MAX; i++)
+			{
+				if (player.attack[i].IsDraw == FALSE)
+				{
+					if (player.muki == MUKI_R)
+					{
+						player.attack[i].muki = MUKI_R;
+					}
+					if (player.muki == MUKI_L)
+					{
+						player.attack[i].muki = MUKI_L;
+					}
+					if (player.attack[i].muki == MUKI_R)
+					{
+						player.attack[i].image.x = player.x + player.width;
+					}
+					if (player.attack[i].muki == MUKI_L)
+					{
+						player.attack[i].image.x = player.x;
+					}
+					player.attack[i].image.y = player.CenterY;
+					player.attack[i].IsDraw = TRUE;
+					break;
+				}
+			}
+		}
+	}
+	if (player.CanAttack == FALSE)
+	{
+		if (player.AttackInterval.cnt == player.AttackInterval.CntMax)
+		{
+			player.AttackInterval.cnt = 0;
+			player.CanAttack = TRUE;
+		}
+		player.AttackInterval.cnt++;
+	}
+	return;
+}
+
+VOID PLAYER_ATTACK_DRAW(VOID)
+{
+	for (int i = 0; i < PLAYER_TAMA_MAX; i++)
+	{
+		if (player.attack[i].IsDraw == TRUE)
+		{
+			DrawGraph(player.attack[i].image.x,
+					  player.attack[i].image.y,
+					  player.attack[0].image.handle, TRUE);
+			
+			if (player.attack[i].muki == MUKI_R)
+			{
+				if (player.attack[i].image.x + player.attack[i].image.width > GAME_WIDTH)
+				{
+					player.attack[i].IsDraw = FALSE;
+				}
+				else
+				{
+					player.attack[i].image.x += 30;
+				}
+			}
+			if (player.attack[i].muki == MUKI_L)
+			{
+				if (player.attack[i].image.x < 0)
+				{
+					player.attack[i].IsDraw = FALSE;
+				}
+				else
+				{
+					player.attack[i].image.x -= 30;
+				}
+			}
+			
+		}
+	}
 }
 
 BOOL MY_CHECK_RECT_COLL(RECT a, RECT b)
