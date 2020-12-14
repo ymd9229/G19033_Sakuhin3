@@ -401,7 +401,7 @@ VOID MY_START_PROC(VOID)
 	if (MY_KEY_DOWN(KEY_INPUT_RETURN) == TRUE)
 	{
 		player.IsDraw = TRUE;
-		player.x = 0;
+		player.x = 1;
 		player.y = 0;
 		player.CenterX = player.x + player.width / 2;
 		player.CenterY = player.y + player.height / 2;
@@ -710,6 +710,7 @@ VOID PLAYER_JUMP(VOID)
 		{
 			player.JumpRise--;
 		}
+		player.status = PLAYER_STATUS_JUMP;
 	}
 	else
 	{
@@ -925,7 +926,7 @@ VOID STAGE_SCROLL(VOID)
 	if (player.CenterX + player.width > GAME_WIDTH / 2)
 	{
 		player.IsScroll = TRUE;
-		if (player.IsMove == TRUE && player.CanRightMove == TRUE)
+		if (player.IsMove == TRUE && player.CanRightMove == TRUE && player.muki == MUKI_R)
 		{
 			for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
 			{
@@ -936,7 +937,7 @@ VOID STAGE_SCROLL(VOID)
 			}
 		}
 	}
-	else if (player.x <= 0 && player.status == PLAYER_STATUS_MOVE_L)
+	else if (player.x <= 0 && player.CanLeftMove == TRUE && player.muki == MUKI_L)
 	{
 		player.IsScroll = TRUE;
 		if (player.IsMove == TRUE && player.CanLeftMove == TRUE)
