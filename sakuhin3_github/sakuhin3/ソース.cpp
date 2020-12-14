@@ -47,6 +47,10 @@ enum GAME_MAP_KIND
 	ac = 2,
 	ad = 3,
 	ae = 4,
+	af = 5,
+	ag = 6,
+	ah = 7,
+	ba = 8,
 };
 
 enum GAME_SCENE {
@@ -67,6 +71,13 @@ enum MUKI
 {
 	MUKI_R,
 	MUKI_L,
+};
+
+enum CHECK_MAP_COLL
+{
+	BLOCK,
+	AIR,
+	GOAL,
 };
 
 typedef struct STRUCT_I_POINT
@@ -188,7 +199,7 @@ GAME_MAP_KIND stage1Data[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX]{
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
-	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
+	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ba,
 	aa,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ad,
 	aa,ab,ac,ab,ad,aa,aa,ab,ac,ab,ac,ab,ad,aa,aa,aa,aa,ab,ac,ab,ad,aa,aa,ab,ac,ab,ac,ab,ad,aa,aa,aa,
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
@@ -220,7 +231,7 @@ VOID PLAYER_JUMP(VOID);
 VOID COLL_PROC(VOID);
 VOID STAGE_SCROLL(VOID);
 BOOL MY_CHECK_RECT_COLL(RECT, RECT);
-BOOL MY_CHECK_MAP1_COLL(RECT,int*,int*);
+INT MY_CHECK_MAP1_COLL(RECT,int*,int*);
 
 VOID PLAYER_ATTACK_PROC(VOID);
 VOID PLAYER_ATTACK_DRAW(VOID);
@@ -843,7 +854,7 @@ VOID COLL_PROC(VOID)
 		}
 	}
 	int x, y;
-	if (MY_CHECK_MAP1_COLL(player.CheckBottomColl,&x,&y) == FALSE)
+	if (MY_CHECK_MAP1_COLL(player.CheckBottomColl,&x,&y) == -1)
 	{
 		player.CanJump = FALSE;
 		if (player.status != PLAYER_STATUS_JUMP)
@@ -860,19 +871,23 @@ VOID COLL_PROC(VOID)
 			}
 		}
 	}
-	else
+	if(MY_CHECK_MAP1_COLL(player.CheckBottomColl, &x, &y) == BLOCK)
 	{
 		player.CenterY = stage1[x][y].y - player.height / 2 - 1;
 		FallTime.cnt = 0;
 		gravity = 10;
 	}
-	if (MY_CHECK_MAP1_COLL(player.CheckRightColl, &x, &y) == TRUE)
+	if (MY_CHECK_MAP1_COLL(player.CheckRightColl, &x, &y) == BLOCK)
 	{
 		player.CanRightMove = FALSE;
 	}
-	if (MY_CHECK_MAP1_COLL(player.CheckLeftColl, &x, &y) == TRUE)
+	if (MY_CHECK_MAP1_COLL(player.CheckLeftColl, &x, &y) == BLOCK)
 	{
 		player.CanLeftMove = FALSE;
+	}
+	if (MY_CHECK_MAP1_COLL(player.coll, &x, &y) == GOAL)
+	{
+		GameScene = GAME_SCENE_END;
 	}
 	
 	
@@ -880,7 +895,7 @@ VOID COLL_PROC(VOID)
 	player.y = player.CenterY - player.height / 2;
 }
 
-BOOL MY_CHECK_MAP1_COLL(RECT a,int *x, int *y)
+INT MY_CHECK_MAP1_COLL(RECT a,int *x, int *y)
 {
 	for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
 	{
@@ -888,16 +903,20 @@ BOOL MY_CHECK_MAP1_COLL(RECT a,int *x, int *y)
 		{
 			if (MY_CHECK_RECT_COLL(stage1[tate][yoko].coll, a) == TRUE)
 			{
-				if (stage1[tate][yoko].kind != ae)
+				if (stage1[tate][yoko].kind != ae && stage1[tate][yoko].kind != ba)
 				{
 					*x = tate;
 					*y = yoko;
-					return TRUE;
+					return BLOCK;
+				}
+				if (stage1[tate][yoko].kind == ba)
+				{
+					return GOAL;
 				}
 			}
 		}
 	}
-	return FALSE;
+	return -1;
 }
 
 
