@@ -1,0 +1,4 @@
+C:\Users\g19033\source\repos\sakuhin3\Debug\sakuhin3.exe
+C:\Users\g19033\source\repos\sakuhin3\Debug\sakuhin3.pdb
+C:\Users\g19033\Documents\sakuhin3\sakuhin3_github\sakuhin3\Debug\sakuhin3.exe
+C:\Users\g19033\Documents\sakuhin3\sakuhin3_github\sakuhin3\Debug\sakuhin3.pdb

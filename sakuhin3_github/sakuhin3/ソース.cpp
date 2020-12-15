@@ -42,6 +42,7 @@
 
 #define MUSIC_TITLE_BGM_PATH    TEXT(".\\MUSIC\\bgm_maoudamashii_healing01.mp3")
 #define MUSIC_STAGE1_BGM_PATH	TEXT(".\\MUSIC\\bgm_maoudamashii_piano25.mp3")
+#define MUSIC_CLEAR_BGM_PATH	TEXT(".\\MUSIC\\game_maoudamashii_7_event37.mp3")
 
 enum GAME_MAP_KIND
 {
@@ -202,6 +203,7 @@ int WalkCheckR;
 int WalkCheckL;
 MUSIC TitleBGM;
 MUSIC Stage1BGM;
+MUSIC GameClearBGM;
 
 GAME_MAP_KIND stage1Data[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX]{
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
@@ -611,8 +613,17 @@ VOID MY_END(VOID)
 //ÉGÉìÉhâÊñ ÇÃèàóù
 VOID MY_END_PROC(VOID)
 {
+	if (CheckSoundMem(GameClearBGM.handle) == 0)
+	{
+		ChangeVolumeSoundMem(255 * 50 / 100, GameClearBGM.handle);	//50%ÇÃâπó Ç…Ç∑ÇÈ
+		PlaySoundMem(GameClearBGM.handle, DX_PLAYTYPE_LOOP);
+	}
 	if (MY_KEY_DOWN(KEY_INPUT_ESCAPE) == TRUE)
 	{
+		if (CheckSoundMem(GameClearBGM.handle) != 0)
+		{
+			StopSoundMem(GameClearBGM.handle);	//BGMÇé~ÇﬂÇÈ
+		}
 		GameScene = GAME_SCENE_START;
 	}
 	return;
@@ -697,6 +708,8 @@ BOOL MY_LOAD_MUSIC(VOID)
 	TitleBGM.handle = LoadSoundMem(TitleBGM.path);
 	strcpy_s(Stage1BGM.path, MUSIC_STAGE1_BGM_PATH);		
 	Stage1BGM.handle = LoadSoundMem(Stage1BGM.path);
+	strcpy_s(GameClearBGM.path, MUSIC_CLEAR_BGM_PATH);
+	GameClearBGM.handle = LoadSoundMem(GameClearBGM.path);
 	return TRUE;
 }
 
@@ -704,6 +717,7 @@ VOID MY_DELETE_MUSIC(VOID)
 {
 	DeleteSoundMem(TitleBGM.handle);
 	DeleteSoundMem(Stage1BGM.handle);
+	DeleteSoundMem(GameClearBGM.handle);
 }
 
 VOID PLAYER_MOVE(VOID)
