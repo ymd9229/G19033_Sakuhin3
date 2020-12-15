@@ -40,6 +40,9 @@
 #define IMAGE_STAGE1_BACK_PATH  TEXT(".\\IMAGE\\Stage1Back.png")
 #define IMAGE_MAP1_PATH         TEXT(".\\IMAGE\\map1.png")
 
+#define MUSIC_TITLE_BGM_PATH    TEXT(".\\MUSIC\\bgm_maoudamashii_healing01.mp3")
+#define MUSIC_STAGE1_BGM_PATH	TEXT(".\\MUSIC\\bgm_maoudamashii_piano25.mp3")
+
 enum GAME_MAP_KIND
 {
 	aa = 0,
@@ -94,13 +97,19 @@ typedef struct STRUCT_CNT
 
 typedef struct STRUCT_IMAGE  
 {
-	char path[PATH_MAX];		//パス
-	int handle;					//ハンドル
-	int x;						//X位置
-	int y;						//Y位置
-	int width;					//幅
-	int height;					//高さ
-}IMAGE;	//画像構造体
+	char path[PATH_MAX];		
+	int handle;					
+	int x;						
+	int y;						
+	int width;					
+	int height;					
+}IMAGE;	
+
+typedef struct STRUCT_MUSIC
+{
+	char path[PATH_MAX];		
+	int handle;					
+}MUSIC;
 
 typedef struct STRUCT_CHANGE_IMAGE
 {
@@ -191,7 +200,8 @@ int gravity;
 CNT FallTime;
 int WalkCheckR;
 int WalkCheckL;
-
+MUSIC TitleBGM;
+MUSIC Stage1BGM;
 
 GAME_MAP_KIND stage1Data[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX]{
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
@@ -232,7 +242,8 @@ VOID COLL_PROC(VOID);
 VOID STAGE_SCROLL(VOID);
 BOOL MY_CHECK_RECT_COLL(RECT, RECT);
 INT MY_CHECK_MAP1_COLL(RECT,int*,int*);
-
+BOOL MY_LOAD_MUSIC(VOID);
+VOID MY_DELETE_MUSIC(VOID);
 VOID PLAYER_ATTACK_PROC(VOID);
 VOID PLAYER_ATTACK_DRAW(VOID);
 
@@ -248,7 +259,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	if (DxLib_Init() == -1) { return -1; }	//ＤＸライブラリ初期化処理
 	SetDrawScreen(DX_SCREEN_BACK);	//Draw系関数は裏画面に描画
 	if (MY_LOAD_IMAGE() == FALSE) { return -1; }
-
+	if (MY_LOAD_MUSIC() == FALSE) { return -1; }
 	while (TRUE)
 	{
 		if (ProcessMessage() != 0) { break; }	//メッセージ処理の結果がエラーのとき、強制終了
@@ -275,6 +286,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	}
 
 	MY_DELETE_IMAGE();
+	MY_DELETE_MUSIC();
 	DxLib_End();	//ＤＸライブラリ使用の終了処理
 
 	return 0;
@@ -397,9 +409,24 @@ VOID MY_START(VOID)
 //スタート画面の処理
 VOID MY_START_PROC(VOID)
 {
+	if (CheckSoundMem(TitleBGM.handle) == 0)
+	{
+		//BGMの音量を下げる
+		ChangeVolumeSoundMem(255 * 50 / 100, TitleBGM.handle);	//50%の音量にする
+
+		//BGMを流す
+		//DX_PLAYTYPE_NORMAL:　ノーマル再生
+		//DX_PLAYTYPE_BACK  : バックグラウンド再生
+		//DX_PLAYTYPE_LOOP  : ループ再生
+		PlaySoundMem(TitleBGM.handle, DX_PLAYTYPE_LOOP);
+	}
 	//エンターキーを押したら、プレイシーンへ移動する
 	if (MY_KEY_DOWN(KEY_INPUT_RETURN) == TRUE)
 	{
+		if (CheckSoundMem(TitleBGM.handle) != 0)
+		{
+			StopSoundMem(TitleBGM.handle);	//BGMを止める
+		}
 		player.IsDraw = TRUE;
 		player.x = 1;
 		player.y = 0;
@@ -409,6 +436,17 @@ VOID MY_START_PROC(VOID)
 		stage = 1;
 		gravity = 10;
 		FallTime.CntMax = 10;
+		for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
+		{
+			for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
+			{
+				stage1[tate][yoko].kind = stage1Data[tate][yoko];
+				stage1[tate][yoko].width = mapchip.width;
+				stage1[tate][yoko].height = mapchip.height;
+				stage1[tate][yoko].x = yoko * stage1[tate][yoko].width;
+				stage1[tate][yoko].y = tate * stage1[tate][yoko].height;
+			}
+		}
 		GameScene = GAME_SCENE_PLAY;
 	}
 	
@@ -439,11 +477,20 @@ VOID MY_PLAY(VOID)
 //プレイ画面の処理
 VOID MY_PLAY_PROC(VOID)
 {
+	if (CheckSoundMem(Stage1BGM.handle) == 0)
+	{
+		ChangeVolumeSoundMem(255 * 50 / 100, Stage1BGM.handle);	//50%の音量にする
+		PlaySoundMem(Stage1BGM.handle, DX_PLAYTYPE_LOOP);
+	}
 	PLAYER_MOVE();
 	STAGE_SCROLL();
 	COLL_PROC();
 	if (MY_KEY_DOWN(KEY_INPUT_SPACE) == TRUE)
 	{
+		if (CheckSoundMem(Stage1BGM.handle) != 0)
+		{
+			StopSoundMem(Stage1BGM.handle);	//BGMを止める
+		}
 		GameScene = GAME_SCENE_END;
 	}
 
@@ -640,7 +687,23 @@ VOID MY_DELETE_IMAGE(VOID)
 		DeleteGraph(StageBack[i].handle);
 	}
 	DeleteGraph(player.handle[0]);
+	DeleteGraph(player.attack[0].image.handle);
 	return;
+}
+
+BOOL MY_LOAD_MUSIC(VOID)
+{
+	strcpy_s(TitleBGM.path, MUSIC_TITLE_BGM_PATH);		
+	TitleBGM.handle = LoadSoundMem(TitleBGM.path);
+	strcpy_s(Stage1BGM.path, MUSIC_STAGE1_BGM_PATH);		
+	Stage1BGM.handle = LoadSoundMem(Stage1BGM.path);
+	return TRUE;
+}
+
+VOID MY_DELETE_MUSIC(VOID)
+{
+	DeleteSoundMem(TitleBGM.handle);
+	DeleteSoundMem(Stage1BGM.handle);
 }
 
 VOID PLAYER_MOVE(VOID)
@@ -888,6 +951,10 @@ VOID COLL_PROC(VOID)
 	}
 	if (MY_CHECK_MAP1_COLL(player.coll, &x, &y) == GOAL)
 	{
+		if (CheckSoundMem(Stage1BGM.handle) != 0)
+		{
+			StopSoundMem(Stage1BGM.handle);	//BGMを止める
+		}
 		GameScene = GAME_SCENE_END;
 	}
 	
