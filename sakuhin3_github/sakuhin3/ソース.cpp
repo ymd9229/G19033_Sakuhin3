@@ -37,6 +37,7 @@
 #define IMAGE_PLAYER_TAMA_PATH  TEXT(".\\IMAGE\\tama.png")
 #define IMAGE_TITLE_BACK_PATH   TEXT(".\\IMAGE\\TitleBack.png")
 #define IMAGE_TITLE_ROGO_PATH   TEXT(".\\IMAGE\\TitleRogo.png")
+#define IMAGE_CLEAR_ROGO_PATH   TEXT(".\\IMAGE\\ClearRogo.png")
 #define IMAGE_STAGE1_BACK_PATH  TEXT(".\\IMAGE\\Stage1Back.png")
 #define IMAGE_MAP1_PATH         TEXT(".\\IMAGE\\map1.png")
 
@@ -185,6 +186,7 @@ typedef struct STRUCT_PLAYER
 
 IMAGE TitleBack;
 IMAGE TitleRogo;
+IMAGE ClearRogo;
 IMAGE StageBack[STAGE_MAX];
 MAPCHIP mapchip;
 MAP stage1[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX];;
@@ -633,7 +635,7 @@ VOID MY_END_PROC(VOID)
 VOID MY_END_DRAW(VOID)
 {
 	
-	DrawBox(10, 10, GAME_WIDTH - 10, GAME_HEIGHT - 10, GetColor(0, 0, 255), TRUE);
+	DrawGraph(GAME_WIDTH / 2 - ClearRogo.width / 2, ClearRogo.height, ClearRogo.handle, true);
 
 	DrawString(0, 0, "エンド画面(エスケープキーを押して下さい)", GetColor(255, 255, 255));
 	return;
@@ -643,9 +645,12 @@ BOOL MY_LOAD_IMAGE(VOID)
 {
 	strcpy_s(TitleRogo.path, IMAGE_TITLE_ROGO_PATH);		
 	TitleRogo.handle = LoadGraph(TitleRogo.path);
+	GetGraphSize(TitleRogo.handle, &TitleRogo.width, &TitleRogo.height);
 	strcpy_s(TitleBack.path, IMAGE_TITLE_BACK_PATH);
 	TitleBack.handle = LoadGraph(TitleBack.path);
-	GetGraphSize(TitleRogo.handle, &TitleRogo.width, &TitleRogo.height);	
+	strcpy_s(ClearRogo.path, IMAGE_CLEAR_ROGO_PATH);
+	ClearRogo.handle = LoadGraph(ClearRogo.path);
+	GetGraphSize(ClearRogo.handle, &ClearRogo.width, &ClearRogo.height);
 	strcpy_s(player.attack[0].image.path, IMAGE_PLAYER_TAMA_PATH);
 	player.attack[0].image.handle = LoadGraph(player.attack[0].image.path);
 	GetGraphSize(player.attack[0].image.handle, &player.attack[0].image.width, &player.attack[0].image.height);
@@ -693,6 +698,7 @@ VOID MY_DELETE_IMAGE(VOID)
 {
 	DeleteGraph(TitleRogo.handle);
 	DeleteGraph(TitleBack.handle);
+	DeleteGraph(ClearRogo.handle);
 	for (int i = 0; i < STAGE_MAX; i++)
 	{
 		DeleteGraph(StageBack[i].handle);
@@ -906,13 +912,13 @@ VOID COLL_PROC(VOID)
 	player.CheckBottomColl.top = player.coll.top;
 	player.CheckBottomColl.bottom = player.coll.bottom + gravity;
 
-	player.CheckRightColl.right = player.coll.right + 1;
+	player.CheckRightColl.right = player.coll.right + 5;
 	player.CheckRightColl.left = player.coll.left + 5;
 	player.CheckRightColl.top = player.coll.top;
 	player.CheckRightColl.bottom = player.coll.bottom;
 
 	player.CheckLeftColl.right = player.coll.right - 5;
-	player.CheckLeftColl.left = player.coll.left - 1;
+	player.CheckLeftColl.left = player.coll.left - 5;
 	player.CheckLeftColl.top = player.coll.top;
 	player.CheckLeftColl.bottom = player.coll.bottom;
 
