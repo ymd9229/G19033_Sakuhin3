@@ -16,6 +16,8 @@
 #define PLAYER_DIV_NUM   PLAYER_DIV_TATE * PLAYER_DIV_YOKO
 #define PLAYER_DIV_STOP_R   16
 #define PLAYER_DIV_STOP_L   17
+#define PLAYER_DIV_SQUAT_R   18
+#define PLAYER_DIV_SQUAT_L   19
 #define PLAYER_DIV_WALK_R 0
 #define PLAYER_DIV_WALK_L 8
 
@@ -56,6 +58,10 @@ enum GAME_MAP_KIND
 	ag = 6,
 	ah = 7,
 	ba = 8,
+	bb = 9,
+	bc = 10,
+	bd = 11,
+	be = 12,
 };
 
 enum GAME_SCENE {
@@ -70,6 +76,7 @@ enum PLAYER_STATUS
 	PLAYER_STATUS_MOVE_L,
 	PLAYER_STATUS_STOP,
 	PLAYER_STATUS_JUMP,
+	PLAYER_STATUS_SQUAT,
 };
 
 enum MUKI
@@ -213,10 +220,10 @@ GAME_MAP_KIND stage1Data[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX]{
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
-	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ba,
-	aa,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ad,
-	aa,ab,ac,ab,ad,aa,aa,ab,ac,ab,ac,ab,ad,aa,aa,aa,aa,ab,ac,ab,ad,aa,aa,ab,ac,ab,ac,ab,ad,aa,aa,aa,
-	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
+	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ag,
+	aa,ae,ae,ae,ac,ae,ac,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ad,
+	aa,ab,ac,ab,bb,ae,bb,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,bd,
+	ba,bb,bc,bb,bc,ae,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bd,
 };
 
 VOID MY_FPS_UPDATE(VOID);			//FPS値を計測、更新する関数
@@ -532,13 +539,19 @@ VOID MY_PLAY_DRAW(VOID)
 				player.change.cnt = 20;
 			}
 		}
-
 		if (player.status == PLAYER_STATUS_STOP)
 		{
 			if(player.muki == MUKI_R)
 			player.change.NowImage = PLAYER_DIV_STOP_R;
 			if (player.muki == MUKI_L)
 			player.change.NowImage = PLAYER_DIV_STOP_L;
+		}
+		if (player.status == PLAYER_STATUS_SQUAT)
+		{
+			if (player.muki == MUKI_R)
+				player.change.NowImage = PLAYER_DIV_SQUAT_R;
+			if (player.muki == MUKI_L)
+				player.change.NowImage = PLAYER_DIV_SQUAT_L;
 		}
 		else if (player.change.cnt < player.change.CntMax)
 		{
@@ -766,6 +779,10 @@ VOID PLAYER_MOVE(VOID)
 		}
 		if (MY_KEY_DOWN(KEY_INPUT_DOWN) == TRUE)
 		{
+			if (player.status != PLAYER_STATUS_JUMP)
+			{
+				player.status = PLAYER_STATUS_SQUAT;
+			}
 		}
 		if (player.status == PLAYER_STATUS_JUMP)
 		{
@@ -776,7 +793,8 @@ VOID PLAYER_MOVE(VOID)
 	player.x = player.CenterX - player.width / 2;
 	player.y = player.CenterY - player.height / 2;
 
-	if (MY_KEY_DOWN(KEY_INPUT_RIGHT) != TRUE && MY_KEY_DOWN(KEY_INPUT_LEFT) != TRUE && player.status != PLAYER_STATUS_JUMP)
+	if (MY_KEY_DOWN(KEY_INPUT_RIGHT) != TRUE && MY_KEY_DOWN(KEY_INPUT_LEFT) != TRUE 
+		&& player.status != PLAYER_STATUS_JUMP && player.status != PLAYER_STATUS_SQUAT)
 	{
 		player.status = PLAYER_STATUS_STOP;
 	}
@@ -906,6 +924,10 @@ VOID COLL_PROC(VOID)
 	player.coll.left = player.x + 25;
 	player.coll.top = player.y;
 	player.coll.bottom = player.y + player.height;
+	if (player.status == PLAYER_STATUS_SQUAT)
+	{
+		player.coll.top = player.y + player.height / 2;
+	}
 
 	player.CheckBottomColl.right = player.coll.right;
 	player.CheckBottomColl.left = player.coll.left;
@@ -991,13 +1013,13 @@ INT MY_CHECK_MAP1_COLL(RECT a,int *x, int *y)
 		{
 			if (MY_CHECK_RECT_COLL(stage1[tate][yoko].coll, a) == TRUE)
 			{
-				if (stage1[tate][yoko].kind != ae && stage1[tate][yoko].kind != ba)
+				if (stage1[tate][yoko].kind != ae && stage1[tate][yoko].kind != ag)
 				{
 					*x = tate;
 					*y = yoko;
 					return BLOCK;
 				}
-				if (stage1[tate][yoko].kind == ba)
+				if (stage1[tate][yoko].kind == ag)
 				{
 					return GOAL;
 				}
