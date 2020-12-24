@@ -21,6 +21,15 @@
 #define PLAYER_DIV_WALK_R 0
 #define PLAYER_DIV_WALK_L 8
 
+#define ENEMY_S_DIV_WIDTH  80
+#define ENEMY_S_DIV_HEIGHT  80
+#define ENEMY_S_DIV_TATE   4
+#define ENEMY_S_DIV_YOKO   1
+#define ENEMY_S_DIV_NUM   ENEMY_S_DIV_TATE * ENEMY_S_DIV_YOKO
+#define ENEMY_DATE_MAX 1
+#define ENEMY_MAX 20
+#define ENEMY_IMAGE_KIND 10
+
 #define MAP_DIV_WIDTH     80
 #define MAP_DIV_HEIGHT    80
 #define MAP_DIV_TATE      8
@@ -42,6 +51,7 @@
 #define IMAGE_CLEAR_ROGO_PATH   TEXT(".\\IMAGE\\ClearRogo.png")
 #define IMAGE_STAGE1_BACK_PATH  TEXT(".\\IMAGE\\Stage1Back.png")
 #define IMAGE_MAP1_PATH         TEXT(".\\IMAGE\\map1.png")
+#define IMAGE_ENEMY1_PATH       TEXT(".\\IMAGE\\enemy1.png")
 
 #define MUSIC_TITLE_BGM_PATH    TEXT(".\\MUSIC\\bgm_maoudamashii_healing01.mp3")
 #define MUSIC_STAGE1_BGM_PATH	TEXT(".\\MUSIC\\bgm_maoudamashii_piano25.mp3")
@@ -188,9 +198,37 @@ typedef struct STRUCT_PLAYER
 	PLAYER_ATTACK attack[PLAYER_TAMA_MAX];
 }PLAYER;
 
+typedef struct STRUCT_ENEMY
+{
+	double x;
+	double y;
+	double CenterX;
+	double CenterY;
+	int kind;
+	int width;
+	int height;
+	CHANGE_IMAGE change;
+	RECT coll;
+	BOOL IsDraw = FALSE;
+}ENEMY;
 
+typedef struct STRUCT_ENEMY_DATE
+{
+	int StartX;
+	int StartY;
+	int kind;
+	BOOL IsDraw = FALSE;
+	char path[PATH_MAX];
+	int handle[PLAYER_DIV_NUM];
+	int width;
+	int height;
+}ENEMY_DATE;
 
-
+ENEMY_DATE EnemyDate[ENEMY_DATE_MAX] = {
+	{700,480,0,}
+};
+ENEMY_DATE EnemyImage[ENEMY_IMAGE_KIND];
+ENEMY enemy[ENEMY_MAX];
 IMAGE TitleBack;
 IMAGE TitleRogo;
 IMAGE ClearRogo;
@@ -213,6 +251,7 @@ int WalkCheckL;
 MUSIC TitleBGM;
 MUSIC Stage1BGM;
 MUSIC GameClearBGM;
+RECT screen;
 
 GAME_MAP_KIND stage1Data[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX]{
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
@@ -248,6 +287,7 @@ VOID MY_END_DRAW(VOID);		//ÉGÉìÉhâÊñ ÇÃï`âÊ
 BOOL MY_LOAD_IMAGE(VOID);		//âÊëúÇÇ‹Ç∆ÇﬂÇƒì«Ç›çûÇﬁä÷êî
 VOID MY_DELETE_IMAGE(VOID);		//âÊëúÇÇ‹Ç∆ÇﬂÇƒçÌèúÇ∑ÇÈä÷êî
 VOID PLAYER_MOVE(VOID);
+VOID PLAYER_DRAW(VOID);
 VOID PLAYER_JUMP(VOID);
 VOID COLL_PROC(VOID);
 VOID STAGE_SCROLL(VOID);
@@ -257,8 +297,10 @@ BOOL MY_LOAD_MUSIC(VOID);
 VOID MY_DELETE_MUSIC(VOID);
 VOID PLAYER_ATTACK_PROC(VOID);
 VOID PLAYER_ATTACK_DRAW(VOID);
-
-
+VOID ENEMY_PROC(VOID);
+VOID ENEMY_DRAW(VOID);
+INT ENEMY_CHECK(VOID);
+VOID ENEMY_MOVE(INT);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -447,6 +489,14 @@ VOID MY_START_PROC(VOID)
 		stage = 1;
 		gravity = 10;
 		FallTime.CntMax = 10;
+		screen.left = 0;
+		screen.right = GAME_WIDTH;
+		screen.top = 0;
+		screen.bottom = GAME_HEIGHT;
+		for (int m = 0; m < ENEMY_DATE_MAX; m++)
+		{
+			EnemyDate[m].IsDraw = FALSE;
+		}
 		for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
 		{
 			for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
@@ -494,8 +544,11 @@ VOID MY_PLAY_PROC(VOID)
 		PlaySoundMem(Stage1BGM.handle, DX_PLAYTYPE_LOOP);
 	}
 	PLAYER_MOVE();
+	ENEMY_PROC();
 	STAGE_SCROLL();
 	COLL_PROC();
+	
+	
 	if (MY_KEY_DOWN(KEY_INPUT_SPACE) == TRUE)
 	{
 		if (CheckSoundMem(Stage1BGM.handle) != 0)
@@ -512,85 +565,8 @@ VOID MY_PLAY_PROC(VOID)
 VOID MY_PLAY_DRAW(VOID)
 {
 	DrawGraph(0, 0, StageBack[stage].handle, true);
-	if (player.IsDraw == TRUE)
-	{
-		DrawGraph(
-			player.x,
-			player.y,
-			player.handle[player.change.NowImage],
-			TRUE);
-		player.change.CntMax = 20;
+	PLAYER_DRAW();
 
-		if (player.status == PLAYER_STATUS_MOVE_R)
-		{
-			WalkCheckR++;
-			WalkCheckL = 0;
-			if (WalkCheckR == 1)
-			{
-				player.change.cnt = 20;
-			}
-		}
-		if (player.status == PLAYER_STATUS_MOVE_L)
-		{
-			WalkCheckR = 0;
-			WalkCheckL++;
-			if (WalkCheckL == 1)
-			{
-				player.change.cnt = 20;
-			}
-		}
-		if (player.status == PLAYER_STATUS_STOP)
-		{
-			if(player.muki == MUKI_R)
-			player.change.NowImage = PLAYER_DIV_STOP_R;
-			if (player.muki == MUKI_L)
-			player.change.NowImage = PLAYER_DIV_STOP_L;
-		}
-		if (player.status == PLAYER_STATUS_SQUAT)
-		{
-			if (player.muki == MUKI_R)
-				player.change.NowImage = PLAYER_DIV_SQUAT_R;
-			if (player.muki == MUKI_L)
-				player.change.NowImage = PLAYER_DIV_SQUAT_L;
-		}
-		else if (player.change.cnt < player.change.CntMax)
-		{
-			player.change.cnt++;
-		}
-		else
-		{
-			if (player.status == PLAYER_STATUS_MOVE_R)
-			{
-				if (player.change.NowImage < PLAYER_DIV_WALK_R + PLAYER_DIV_TATE -1)
-				{
-					player.change.NowImage++;
-				}
-				else
-				{
-					player.change.NowImage = PLAYER_DIV_WALK_R;
-				}
-			}
-			if (player.status == PLAYER_STATUS_MOVE_L)
-			{
-				WalkCheckR = 0;
-				WalkCheckL++;
-				if (WalkCheckL == 1)
-				{
-					player.change.cnt = 20;
-				}
-				if (player.change.NowImage < PLAYER_DIV_WALK_L + PLAYER_DIV_TATE - 1 && 
-					player.change.NowImage >= PLAYER_DIV_WALK_L)
-				{
-					player.change.NowImage++;
-				}
-				else
-				{
-					player.change.NowImage = PLAYER_DIV_WALK_L;
-				}
-			}
-			player.change.cnt = 0;
-		}
-	}
 	for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
 	{
 		for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
@@ -614,6 +590,7 @@ VOID MY_PLAY_DRAW(VOID)
 			player.CheckLeftColl.right, player.CheckLeftColl.bottom,
 			GetColor(0, 255, 0), FALSE);
 	PLAYER_ATTACK_DRAW();
+	ENEMY_DRAW();
 	return;
 }
 
@@ -704,6 +681,29 @@ BOOL MY_LOAD_IMAGE(VOID)
 			stage1[tate][yoko].y = tate * stage1[tate][yoko].height;
 		}
 	}
+	int k;
+	for (int k = 0; k < ENEMY_IMAGE_KIND; k++)
+	{
+		switch (k)
+		{
+		case 0:
+			LoadDivGraph(
+				IMAGE_ENEMY1_PATH,
+				ENEMY_S_DIV_NUM, ENEMY_S_DIV_TATE, ENEMY_S_DIV_YOKO,
+				ENEMY_S_DIV_WIDTH, ENEMY_S_DIV_HEIGHT,
+				&EnemyImage[k].handle[0]);
+			GetGraphSize(EnemyImage[k].handle[0], &EnemyImage[k].width, &EnemyImage[k].height);
+			break;
+		case 1:
+			break;
+		}
+	}
+	for (int m = 0; m < ENEMY_DATE_MAX; m++)
+	{
+		EnemyDate[m].width = EnemyImage[EnemyDate[m].kind].width;
+		EnemyDate[m].height = EnemyImage[EnemyDate[m].kind].height;
+	}
+
 	return TRUE;
 }
 
@@ -718,6 +718,10 @@ VOID MY_DELETE_IMAGE(VOID)
 	}
 	DeleteGraph(player.handle[0]);
 	DeleteGraph(player.attack[0].image.handle);
+	for (int k = 0; k < ENEMY_IMAGE_KIND; k++)
+	{
+		DeleteGraph(EnemyImage[k].handle[0]);
+	}
 	return;
 }
 
@@ -868,6 +872,89 @@ VOID PLAYER_ATTACK_PROC(VOID)
 	return;
 }
 
+VOID PLAYER_DRAW(VOID)
+{
+	if (player.IsDraw == TRUE)
+	{
+		DrawGraph(
+			player.x,
+			player.y,
+			player.handle[player.change.NowImage],
+			TRUE);
+		player.change.CntMax = 20;
+
+		if (player.status == PLAYER_STATUS_MOVE_R)
+		{
+			WalkCheckR++;
+			WalkCheckL = 0;
+			if (WalkCheckR == 1)
+			{
+				player.change.cnt = 20;
+			}
+		}
+		if (player.status == PLAYER_STATUS_MOVE_L)
+		{
+			WalkCheckR = 0;
+			WalkCheckL++;
+			if (WalkCheckL == 1)
+			{
+				player.change.cnt = 20;
+			}
+		}
+		if (player.status == PLAYER_STATUS_STOP)
+		{
+			if (player.muki == MUKI_R)
+				player.change.NowImage = PLAYER_DIV_STOP_R;
+			if (player.muki == MUKI_L)
+				player.change.NowImage = PLAYER_DIV_STOP_L;
+		}
+		if (player.status == PLAYER_STATUS_SQUAT)
+		{
+			if (player.muki == MUKI_R)
+				player.change.NowImage = PLAYER_DIV_SQUAT_R;
+			if (player.muki == MUKI_L)
+				player.change.NowImage = PLAYER_DIV_SQUAT_L;
+		}
+		else if (player.change.cnt < player.change.CntMax)
+		{
+			player.change.cnt++;
+		}
+		else
+		{
+			if (player.status == PLAYER_STATUS_MOVE_R)
+			{
+				if (player.change.NowImage < PLAYER_DIV_WALK_R + PLAYER_DIV_TATE - 1)
+				{
+					player.change.NowImage++;
+				}
+				else
+				{
+					player.change.NowImage = PLAYER_DIV_WALK_R;
+				}
+			}
+			if (player.status == PLAYER_STATUS_MOVE_L)
+			{
+				WalkCheckR = 0;
+				WalkCheckL++;
+				if (WalkCheckL == 1)
+				{
+					player.change.cnt = 20;
+				}
+				if (player.change.NowImage < PLAYER_DIV_WALK_L + PLAYER_DIV_TATE - 1 &&
+					player.change.NowImage >= PLAYER_DIV_WALK_L)
+				{
+					player.change.NowImage++;
+				}
+				else
+				{
+					player.change.NowImage = PLAYER_DIV_WALK_L;
+				}
+			}
+			player.change.cnt = 0;
+		}
+	}
+}
+
 VOID PLAYER_ATTACK_DRAW(VOID)
 {
 	for (int i = 0; i < PLAYER_TAMA_MAX; i++)
@@ -920,6 +1007,12 @@ BOOL MY_CHECK_RECT_COLL(RECT a, RECT b)
 
 VOID COLL_PROC(VOID)
 {
+	for (int n = 0; n < ENEMY_MAX; n++)
+	{
+		enemy[n].x = enemy[n].CenterX - enemy[n].width / 2;
+		enemy[n].y = enemy[n].CenterY - enemy[n].height / 2;
+	}
+
 	player.coll.right = player.x + player.width - 25;
 	player.coll.left = player.x + 25;
 	player.coll.top = player.y;
@@ -1044,6 +1137,12 @@ VOID STAGE_SCROLL(VOID)
 					stage1[tate][yoko].x -= 5;
 				}
 			}
+			for (int n = 0; n < ENEMY_MAX; n++)
+			{
+				enemy[n].CenterX -= 5;
+			}
+			screen.right -= 5;
+			screen.left -= 5;
 		}
 	}
 	else if (player.x <= 0 && player.CanLeftMove == TRUE && player.muki == MUKI_L)
@@ -1058,10 +1157,110 @@ VOID STAGE_SCROLL(VOID)
 					stage1[tate][yoko].x += 5;
 				}
 			}
+			for (int n = 0; n < ENEMY_MAX; n++)
+			{
+				enemy[n].CenterX += 5;
+			}
+			screen.right += 5;
+			screen.left += 5;
 		}
 	}
 	else
 	{
 		player.IsScroll = FALSE;
+	}
+}
+
+VOID ENEMY_PROC(VOID)
+{
+	int n;
+	for (int m = 0; m < ENEMY_DATE_MAX; m++)
+	{
+		if (EnemyDate[m].StartX > screen.left && EnemyDate[m].StartX < screen.right &&
+			EnemyDate[m].StartY > screen.top && EnemyDate[m].StartY < screen.bottom &&
+			EnemyDate[m].IsDraw == FALSE)
+		{
+			if ((n = ENEMY_CHECK()) != -1)
+			{
+				enemy[n].x = EnemyDate[m].StartX;
+				enemy[n].y = EnemyDate[m].StartY;
+				enemy[n].kind = EnemyDate[m].kind;
+				enemy[n].width = EnemyDate[m].width;
+				enemy[n].height = EnemyDate[m].height;
+				enemy[n].CenterX = enemy[n].x + enemy[n].width / 2;
+				enemy[n].CenterY = enemy[n].y + enemy[n].height / 2;
+				enemy[n].IsDraw = TRUE;
+				EnemyDate[m].IsDraw = TRUE;
+			}
+		}
+	}
+	for (int n = 0; n < ENEMY_MAX; n++)
+	{
+		if (enemy[n].IsDraw == TRUE)
+		{
+			ENEMY_MOVE(n);
+		}
+	}
+}
+
+int ENEMY_CHECK()
+{
+	for (int n = 0; n < ENEMY_MAX; n++)
+	{
+		if (enemy[n].IsDraw == 0)
+		{
+			return n;
+		}
+	}
+	return -1;
+}
+
+VOID ENEMY_MOVE(int n)
+{
+	switch (enemy[n].kind)
+	{
+	case 0:
+		enemy[n].CenterX--;
+		break;
+	case 1:
+		break;
+	}
+}
+
+VOID ENEMY_DRAW(VOID)
+{
+	for (int n = 0; n < ENEMY_MAX; n++)
+	{
+		if (enemy[n].IsDraw == TRUE)
+		{
+			DrawGraph(
+				enemy[n].x,
+				enemy[n].y,
+				EnemyImage[enemy[n].kind].handle[enemy[n].change.NowImage],
+				TRUE);
+			enemy[n].change.CntMax = 20;
+
+			if (enemy[n].change.cnt < enemy[n].change.CntMax)
+			{
+				enemy[n].change.cnt++;
+			}
+			else
+			{
+				if (enemy[n].change.NowImage < 1)
+				{
+					enemy[n].change.NowImage++;
+				}
+				else
+				{
+					enemy[n].change.NowImage = 0;
+				}
+				enemy[n].change.cnt = 0;
+			}
+
+			if (enemy[n].x < 0 || enemy[n].x > GAME_WIDTH)
+			{
+				enemy[n].IsDraw = FALSE;
+			}
+		}
 	}
 }
