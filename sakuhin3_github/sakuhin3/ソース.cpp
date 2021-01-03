@@ -55,6 +55,8 @@
 #define IMAGE_STAGE1_BACK_PATH  TEXT(".\\IMAGE\\Stage1Back.png")
 #define IMAGE_MAP1_PATH         TEXT(".\\IMAGE\\map1.png")
 #define IMAGE_ENEMY1_PATH       TEXT(".\\IMAGE\\enemy1.png")
+#define IMAGE_BOOK_PATH       TEXT(".\\IMAGE\\book.png")
+
 
 #define MUSIC_TITLE_BGM_PATH    TEXT(".\\MUSIC\\bgm_maoudamashii_healing01.mp3")
 #define MUSIC_STAGE1_BGM_PATH	TEXT(".\\MUSIC\\bgm_maoudamashii_piano25.mp3")
@@ -182,6 +184,7 @@ typedef struct STRUCT_PLAYER_ATTACK
 	BOOL IsDraw;
 	CNT cnt;
 	int muki;
+	RECT coll;
 }PLAYER_ATTACK;
 
 typedef struct STRUCT_PLAYER
@@ -213,6 +216,11 @@ typedef struct STRUCT_PLAYER
 	PLAYER_ATTACK attack[PLAYER_TAMA_MAX];
 }PLAYER;
 
+typedef struct STRUCT_ITEM
+{
+	IMAGE image;
+}ITEM;
+
 typedef struct STRUCT_ENEMY
 {
 	double x;
@@ -224,8 +232,10 @@ typedef struct STRUCT_ENEMY
 	int width;
 	int height;
 	CHANGE_IMAGE change;
-	RECT coll;
+	COLL coll;
 	BOOL IsDraw = FALSE;
+	BOOL CanRightMove = TRUE;
+	BOOL CanLeftMove = TRUE;
 }ENEMY;
 
 typedef struct STRUCT_ENEMY_DATE
@@ -241,7 +251,7 @@ typedef struct STRUCT_ENEMY_DATE
 }ENEMY_DATE;
 
 ENEMY_DATE EnemyDate[ENEMY_DATE_MAX] = {
-	{700,480,0,}
+	{700,479,0,}
 };
 ENEMY_DATE EnemyImage[ENEMY_IMAGE_KIND];
 ENEMY enemy[ENEMY_MAX];
@@ -271,6 +281,7 @@ int WalkCheckL;
 MUSIC TitleBGM;
 MUSIC Stage1BGM;
 MUSIC GameClearBGM;
+ITEM book;
 RECT screen;
 
 GAME_MAP_KIND stage1Data[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX]{
@@ -280,7 +291,7 @@ GAME_MAP_KIND stage1Data[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX]{
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ag,
-	aa,ae,ae,ae,ac,ae,ac,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ad,
+	aa,ae,ae,ae,ac,ae,ac,ae,ae,ae,ae,ae,ae,ae,ae,ad,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ad,
 	aa,ab,ac,ab,bb,ae,bb,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,bd,
 	ba,bb,bc,bb,bc,ae,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bd,
 };
@@ -288,10 +299,12 @@ GAME_MAP_KIND stage1Data[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX]{
 VOID MY_FPS_UPDATE(VOID);			//FPS値を計測、更新する関数
 VOID MY_FPS_DRAW(VOID);				//FPS値を描画する関数
 VOID MY_FPS_WAIT(VOID);				//FPS値を計測し、待つ関数
+
 VOID MY_ALL_KEYDOWN_UPDATE(VOID);	//キーの入力状態を更新する
 BOOL MY_KEY_DOWN(int);				//キーを押しているか、キーコードで判断する
 BOOL MY_KEY_UP(int);				//キーを押し上げたか、キーコードで判断する
 BOOL MY_KEYDOWN_KEEP(int, int);	//キーを押し続けているか、キーコードで判断する
+
 VOID MY_START(VOID);		//スタート画面
 VOID MY_START_PROC(VOID);	//スタート画面の処理
 VOID MY_START_DRAW(VOID);	//スタート画面の描画
@@ -306,18 +319,24 @@ VOID MY_END_DRAW(VOID);		//エンド画面の描画
 
 BOOL MY_LOAD_IMAGE(VOID);		//画像をまとめて読み込む関数
 VOID MY_DELETE_IMAGE(VOID);		//画像をまとめて削除する関数
+
 VOID PLAYER_MOVE(VOID);
 VOID PLAYER_DRAW(VOID);
 VOID PLAYER_JUMP(VOID);
-VOID COLL_PROC(VOID);
+
 VOID STAGE_SCROLL(VOID);
+
+VOID COLL_PROC(VOID);
 BOOL MY_CHECK_RECT_COLL(RECT, RECT);
-BOOL MY_CHECK_ENEMY_PLAYER_COLL(RECT);
+INT MY_CHECK_ENEMY_COLL(RECT);
 INT MY_CHECK_MAP1_COLL(RECT,int*,int*);
+
 BOOL MY_LOAD_MUSIC(VOID);
 VOID MY_DELETE_MUSIC(VOID);
+
 VOID PLAYER_ATTACK_PROC(VOID);
 VOID PLAYER_ATTACK_DRAW(VOID);
+
 VOID ENEMY_PROC(VOID);
 VOID ENEMY_DRAW(VOID);
 INT ENEMY_CHECK(VOID);
@@ -485,7 +504,6 @@ VOID MY_START_PROC(VOID)
 {
 	if (CheckSoundMem(TitleBGM.handle) == 0)
 	{
-		//BGMの音量を下げる
 		ChangeVolumeSoundMem(255 * 50 / 100, TitleBGM.handle);	//50%の音量にする
 
 		//BGMを流す
@@ -521,6 +539,8 @@ VOID MY_START_PROC(VOID)
 		for (int n = 0; n < ENEMY_MAX; n++)
 		{
 			enemy[n].IsDraw = FALSE;
+			enemy[n].CanLeftMove = TRUE;
+			enemy[n].CanRightMove = FALSE;
 		}
 
 		for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
@@ -615,6 +635,7 @@ VOID MY_PLAY_DRAW(VOID)
 	DrawBox(player.coll.CheckLeft.left, player.coll.CheckLeft.top,
 			player.coll.CheckLeft.right, player.coll.CheckLeft.bottom,
 			GetColor(0, 255, 0), FALSE);
+	DrawGraph(book.image.x, book.image.y, book.image.handle, TRUE);
 	PLAYER_ATTACK_DRAW();
 	ENEMY_DRAW();
 	return;
@@ -700,6 +721,9 @@ BOOL MY_LOAD_IMAGE(VOID)
 	strcpy_s(OverBack.path, IMAGE_OVER_BK_PATH);
 	OverBack.handle = LoadGraph(OverBack.path);
 
+	strcpy_s(book.image.path, IMAGE_BOOK_PATH);
+	book.image.handle = LoadGraph(book.image.path);
+
 	strcpy_s(player.attack[0].image.path, IMAGE_PLAYER_TAMA_PATH);
 	player.attack[0].image.handle = LoadGraph(player.attack[0].image.path);
 	GetGraphSize(player.attack[0].image.handle, &player.attack[0].image.width, &player.attack[0].image.height);
@@ -772,6 +796,8 @@ VOID MY_DELETE_IMAGE(VOID)
 	DeleteGraph(TitleBack.handle);
 	DeleteGraph(ClearRogo.handle);
 	DeleteGraph(OverRogo.handle);
+	DeleteGraph(book.image.handle);
+	
 	for (int i = 0; i < STAGE_MAX; i++)
 	{
 		DeleteGraph(StageBack[i].handle);
@@ -999,12 +1025,6 @@ VOID PLAYER_DRAW(VOID)
 			}
 			if (player.status == PLAYER_STATUS_MOVE_L)
 			{
-				WalkCheckR = 0;
-				WalkCheckL++;
-				if (WalkCheckL == 1)
-				{
-					player.change.cnt = 20;
-				}
 				if (player.change.NowImage < PLAYER_DIV_WALK_L + PLAYER_DIV_TATE - 1 &&
 					player.change.NowImage >= PLAYER_DIV_WALK_L)
 				{
@@ -1072,16 +1092,75 @@ BOOL MY_CHECK_RECT_COLL(RECT a, RECT b)
 
 VOID COLL_PROC(VOID)
 {
+	
+	int x, y;
 	for (int n = 0; n < ENEMY_MAX; n++)
 	{
 		if (enemy[n].IsDraw == TRUE)
 		{
 			enemy[n].x = enemy[n].CenterX - enemy[n].width / 2;
 			enemy[n].y = enemy[n].CenterY - enemy[n].height / 2;
-			enemy[n].coll.left = enemy[n].x;
-			enemy[n].coll.right = enemy[n].x + enemy[n].width;
-			enemy[n].coll.top = enemy[n].y;
-			enemy[n].coll.bottom = enemy[n].y + enemy[n].height;
+
+			enemy[n].coll.base.left = enemy[n].x;
+			enemy[n].coll.base.right = enemy[n].x + enemy[n].width;
+			enemy[n].coll.base.top = enemy[n].y;
+			enemy[n].coll.base.bottom = enemy[n].y + enemy[n].height;
+
+			enemy[n].coll.CheckBottom.left = enemy[n].coll.base.left;
+			enemy[n].coll.CheckBottom.right = enemy[n].coll.base.right;
+			enemy[n].coll.CheckBottom.top = enemy[n].coll.base.top;
+			enemy[n].coll.CheckBottom.bottom = enemy[n].coll.base.bottom + 10;
+
+			enemy[n].coll.CheckLeft.left = enemy[n].coll.base.left - 5;
+			enemy[n].coll.CheckLeft.right = enemy[n].coll.base.right - 5;
+			enemy[n].coll.CheckLeft.top = enemy[n].coll.base.top;
+			enemy[n].coll.CheckLeft.bottom = enemy[n].coll.base.bottom;
+
+			enemy[n].coll.CheckRight.left = enemy[n].coll.base.left + 5;
+			enemy[n].coll.CheckRight.right = enemy[n].coll.base.right + 5;
+			enemy[n].coll.CheckRight.top = enemy[n].coll.base.top;
+			enemy[n].coll.CheckRight.bottom = enemy[n].coll.base.bottom;
+
+			
+
+			if (MY_CHECK_MAP1_COLL(enemy[n].coll.CheckLeft, &x, &y) == BLOCK)
+			{
+				enemy[n].CanLeftMove = FALSE;
+				enemy[n].CanRightMove = TRUE;
+			}
+			if (MY_CHECK_MAP1_COLL(enemy[n].coll.CheckRight, &x, &y) == BLOCK)
+			{
+				enemy[n].CanRightMove = FALSE;
+				enemy[n].CanLeftMove = TRUE;
+			}
+			if (MY_CHECK_MAP1_COLL(enemy[n].coll.CheckBottom, &x, &y) == -1)
+			{
+				enemy[n].CenterY += 10;
+			}
+			if (MY_CHECK_MAP1_COLL(enemy[n].coll.CheckBottom, &x, &y) == BLOCK)
+			{
+				enemy[n].CenterY = stage1[x][y].y - enemy[n].height / 2 - 1;
+			}
+		}
+	}
+
+	for (int i = 0; i < PLAYER_TAMA_MAX; i++)
+	{
+		if (player.attack[i].IsDraw == TRUE)
+		{
+			player.attack[i].coll.left = player.attack[i].image.x;
+			player.attack[i].coll.right = player.attack[i].image.x + player.attack[i].image.width;
+			player.attack[i].coll.top = player.attack[i].image.y;
+			player.attack[i].coll.bottom = player.attack[i].image.y + player.attack[i].image.height;
+			if (MY_CHECK_MAP1_COLL(player.attack[i].coll, &x, &y) == BLOCK)
+			{
+				player.attack[i].IsDraw = FALSE;
+			}
+			if (MY_CHECK_ENEMY_COLL(player.attack[i].coll) != -1)
+			{
+				player.attack[i].IsDraw = FALSE;
+				enemy[MY_CHECK_ENEMY_COLL(player.attack[i].coll)].IsDraw = FALSE;
+			}
 		}
 	}
 
@@ -1089,6 +1168,7 @@ VOID COLL_PROC(VOID)
 	player.coll.base.left = player.x + 25;
 	player.coll.base.top = player.y;
 	player.coll.base.bottom = player.y + player.height;
+
 	if (player.status == PLAYER_STATUS_SQUAT)
 	{
 		player.coll.base.top = player.y + player.height / 2;
@@ -1124,7 +1204,7 @@ VOID COLL_PROC(VOID)
 			stage1[tate][yoko].coll.bottom = stage1[tate][yoko].y + stage1[tate][yoko].height;
 		}
 	}
-	int x, y;
+	
 	if (MY_CHECK_MAP1_COLL(player.coll.CheckBottom,&x,&y) == -1)
 	{
 		player.CanJump = FALSE;
@@ -1161,7 +1241,7 @@ VOID COLL_PROC(VOID)
 		EndKind = GAME_CLEAR;
 		GameScene = GAME_SCENE_END;
 	}
-	if (MY_CHECK_ENEMY_PLAYER_COLL(player.coll.base) == TRUE)
+	if (MY_CHECK_ENEMY_COLL(player.coll.base) != -1)
 	{
 		EndKind = GAME_OVER;
 		GameScene = GAME_SCENE_END;
@@ -1196,16 +1276,16 @@ INT MY_CHECK_MAP1_COLL(RECT a,int *x, int *y)
 }
 
 
-BOOL MY_CHECK_ENEMY_PLAYER_COLL(RECT player)
+INT MY_CHECK_ENEMY_COLL(RECT player)
 {
 	for (int n = 0; n < ENEMY_MAX; n++)
 	{
-		if (MY_CHECK_RECT_COLL(enemy[n].coll, player) == TRUE && enemy[n].IsDraw == TRUE)
+		if (MY_CHECK_RECT_COLL(enemy[n].coll.base, player) == TRUE && enemy[n].IsDraw == TRUE)
 		{
-			return TRUE;
+			return n;
 		}
 	}
-	return FALSE;
+	return -1;
 }
 
 VOID STAGE_SCROLL(VOID)
@@ -1302,10 +1382,20 @@ int ENEMY_CHECK()
 
 VOID ENEMY_MOVE(int n)
 {
+	
 	switch (enemy[n].kind)
 	{
 	case 0:
-		enemy[n].CenterX--;
+		if (enemy[n].CanLeftMove == TRUE)
+		{
+			enemy[n].muki = MUKI_L;
+			enemy[n].CenterX--;
+		}
+		if (enemy[n].CanRightMove == TRUE)
+		{
+			enemy[n].muki = MUKI_R;
+			enemy[n].CenterX++;
+		}
 		break;
 	case 1:
 		break;
@@ -1331,17 +1421,32 @@ VOID ENEMY_DRAW(VOID)
 			}
 			else
 			{
-				if (enemy[n].change.NowImage < 1)
+				if (enemy[n].muki == MUKI_L)
 				{
-					enemy[n].change.NowImage++;
+					if (enemy[n].change.NowImage < 1)
+					{
+						enemy[n].change.NowImage++;
+					}
+					else
+					{
+						enemy[n].change.NowImage = 0;
+					}
 				}
-				else
+				if (enemy[n].muki == MUKI_R)
 				{
-					enemy[n].change.NowImage = 0;
+					if (enemy[n].change.NowImage < 3)
+					{
+						enemy[n].change.NowImage++;
+					}
+					else
+					{
+						enemy[n].change.NowImage = 2;
+					}
 				}
 				enemy[n].change.cnt = 0;
 			}
 
+			//画面外に行くと消える
 			if (enemy[n].x + enemy[n].width < 0 || enemy[n].x > GAME_WIDTH)
 			{
 				enemy[n].IsDraw = FALSE;
