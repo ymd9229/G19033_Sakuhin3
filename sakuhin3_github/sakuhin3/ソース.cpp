@@ -62,6 +62,10 @@
 #define MUSIC_STAGE1_BGM_PATH	TEXT(".\\MUSIC\\bgm_maoudamashii_piano25.mp3")
 #define MUSIC_CLEAR_BGM_PATH	TEXT(".\\MUSIC\\game_maoudamashii_7_event37.mp3")
 
+#define MUSIC_ATTACK_SE_PATH    TEXT(".\\MUSIC\\se_maoudamashii_retro16.mp3")
+#define MUSIC_DEFEAT_SE_PATH    TEXT(".\\MUSIC\\se_maoudamashii_retro04.mp3")
+#define MUSIC_GOAL_SE_PATH		TEXT(".\\MUSIC\\se_maoudamashii_onepoint09.mp3")
+
 enum GAME_MAP_KIND
 {
 	aa = 0,
@@ -77,6 +81,7 @@ enum GAME_MAP_KIND
 	bc = 10,
 	bd = 11,
 	be = 12,
+	ha = 56,
 };
 
 enum END_TYPE
@@ -111,6 +116,7 @@ enum CHECK_MAP_COLL
 	BLOCK,
 	AIR,
 	GOAL,
+	BOOK,
 };
 
 typedef struct STRUCT_I_POINT
@@ -281,7 +287,9 @@ int WalkCheckL;
 MUSIC TitleBGM;
 MUSIC Stage1BGM;
 MUSIC GameClearBGM;
-ITEM book;
+MUSIC AttackSE;
+MUSIC DefeatSE;
+MUSIC GoalSE;
 RECT screen;
 
 GAME_MAP_KIND stage1Data[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX]{
@@ -291,7 +299,7 @@ GAME_MAP_KIND stage1Data[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX]{
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ag,
-	aa,ae,ae,ae,ac,ae,ac,ae,ae,ae,ae,ae,ae,ae,ae,ad,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ad,
+	aa,ae,ae,ae,ac,ae,ac,ae,ae,ae,ae,ae,ae,ae,ae,ad,ae,ha,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ad,
 	aa,ab,ac,ab,bb,ae,bb,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,bd,
 	ba,bb,bc,bb,bc,ae,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bd,
 };
@@ -635,7 +643,6 @@ VOID MY_PLAY_DRAW(VOID)
 	DrawBox(player.coll.CheckLeft.left, player.coll.CheckLeft.top,
 			player.coll.CheckLeft.right, player.coll.CheckLeft.bottom,
 			GetColor(0, 255, 0), FALSE);
-	DrawGraph(book.image.x, book.image.y, book.image.handle, TRUE);
 	PLAYER_ATTACK_DRAW();
 	ENEMY_DRAW();
 	return;
@@ -721,8 +728,6 @@ BOOL MY_LOAD_IMAGE(VOID)
 	strcpy_s(OverBack.path, IMAGE_OVER_BK_PATH);
 	OverBack.handle = LoadGraph(OverBack.path);
 
-	strcpy_s(book.image.path, IMAGE_BOOK_PATH);
-	book.image.handle = LoadGraph(book.image.path);
 
 	strcpy_s(player.attack[0].image.path, IMAGE_PLAYER_TAMA_PATH);
 	player.attack[0].image.handle = LoadGraph(player.attack[0].image.path);
@@ -796,7 +801,6 @@ VOID MY_DELETE_IMAGE(VOID)
 	DeleteGraph(TitleBack.handle);
 	DeleteGraph(ClearRogo.handle);
 	DeleteGraph(OverRogo.handle);
-	DeleteGraph(book.image.handle);
 	
 	for (int i = 0; i < STAGE_MAX; i++)
 	{
@@ -819,6 +823,12 @@ BOOL MY_LOAD_MUSIC(VOID)
 	Stage1BGM.handle = LoadSoundMem(Stage1BGM.path);
 	strcpy_s(GameClearBGM.path, MUSIC_CLEAR_BGM_PATH);
 	GameClearBGM.handle = LoadSoundMem(GameClearBGM.path);
+	strcpy_s(AttackSE.path, MUSIC_ATTACK_SE_PATH);
+	AttackSE.handle = LoadSoundMem(AttackSE.path);
+	strcpy_s(DefeatSE.path, MUSIC_DEFEAT_SE_PATH);
+	DefeatSE.handle = LoadSoundMem(DefeatSE.path);
+	strcpy_s(GoalSE.path, MUSIC_GOAL_SE_PATH);
+	GoalSE.handle = LoadSoundMem(GoalSE.path);
 	return TRUE;
 }
 
@@ -827,6 +837,9 @@ VOID MY_DELETE_MUSIC(VOID)
 	DeleteSoundMem(TitleBGM.handle);
 	DeleteSoundMem(Stage1BGM.handle);
 	DeleteSoundMem(GameClearBGM.handle);
+	DeleteSoundMem(AttackSE.handle);
+	DeleteSoundMem(DefeatSE.handle);
+	DeleteSoundMem(GoalSE.handle);
 }
 
 VOID PLAYER_MOVE(VOID)
@@ -946,6 +959,11 @@ VOID PLAYER_ATTACK_PROC(VOID)
 					}
 					player.attack[i].image.y = player.CenterY;
 					player.attack[i].IsDraw = TRUE;
+					if (CheckSoundMem(AttackSE.handle) == 0)
+					{
+						ChangeVolumeSoundMem(25 * 1 / 100, TitleBGM.handle);
+						PlaySoundMem(AttackSE.handle, DX_PLAYTYPE_BACK);
+					}
 					break;
 				}
 			}
@@ -1160,6 +1178,11 @@ VOID COLL_PROC(VOID)
 			{
 				player.attack[i].IsDraw = FALSE;
 				enemy[MY_CHECK_ENEMY_COLL(player.attack[i].coll)].IsDraw = FALSE;
+				if (CheckSoundMem(DefeatSE.handle) == 0)
+				{
+					ChangeVolumeSoundMem(255 * 10 / 100, TitleBGM.handle);
+					PlaySoundMem(DefeatSE.handle, DX_PLAYTYPE_BACK);
+				}
 			}
 		}
 	}
@@ -1239,6 +1262,11 @@ VOID COLL_PROC(VOID)
 	if (MY_CHECK_MAP1_COLL(player.coll.base, &x, &y) == GOAL)
 	{
 		EndKind = GAME_CLEAR;
+		if (CheckSoundMem(GoalSE.handle) == 0)
+		{
+			ChangeVolumeSoundMem(255 * 30 / 100, TitleBGM.handle);
+			PlaySoundMem(GoalSE.handle, DX_PLAYTYPE_BACK);
+		}
 		GameScene = GAME_SCENE_END;
 	}
 	if (MY_CHECK_ENEMY_COLL(player.coll.base) != -1)
@@ -1259,16 +1287,22 @@ INT MY_CHECK_MAP1_COLL(RECT a,int *x, int *y)
 		{
 			if (MY_CHECK_RECT_COLL(stage1[tate][yoko].coll, a) == TRUE)
 			{
-				if (stage1[tate][yoko].kind != ae && stage1[tate][yoko].kind != ag)
+				if (stage1[tate][yoko].kind == ag)
+				{
+					return GOAL;
+				}
+				else if (stage1[tate][yoko].kind == ha)
+				{
+					stage1[tate][yoko].kind = ae;
+					return BOOK;
+				}
+				else if (stage1[tate][yoko].kind != ae)
 				{
 					*x = tate;
 					*y = yoko;
 					return BLOCK;
 				}
-				if (stage1[tate][yoko].kind == ag)
-				{
-					return GOAL;
-				}
+				
 			}
 		}
 	}
