@@ -847,6 +847,11 @@ VOID PLAYER_MOVE(VOID)
 	player.IsMove = FALSE;
 	if (player.CanMove == TRUE)
 	{
+		if (MY_KEY_DOWN(KEY_INPUT_RIGHT) != TRUE && MY_KEY_DOWN(KEY_INPUT_LEFT) != TRUE
+			&& player.status != PLAYER_STATUS_JUMP)
+		{
+			player.status = PLAYER_STATUS_STOP;
+		}
 		if (MY_KEY_DOWN(KEY_INPUT_UP) == TRUE)
 		{
 			if (player.CanJump == TRUE)
@@ -854,31 +859,34 @@ VOID PLAYER_MOVE(VOID)
 				player.status = PLAYER_STATUS_JUMP;
 			}
 		}
-		if (MY_KEY_DOWN(KEY_INPUT_RIGHT) == TRUE && MY_KEY_DOWN(KEY_INPUT_LEFT) != TRUE)
+		if (MY_KEY_DOWN(KEY_INPUT_DOWN) != TRUE)
 		{
-			if (player.IsScroll == FALSE && player.CanRightMove == TRUE)
+			if (MY_KEY_DOWN(KEY_INPUT_RIGHT) == TRUE && MY_KEY_DOWN(KEY_INPUT_LEFT) != TRUE)
 			{
-				player.CenterX += 5;
+				if (player.IsScroll == FALSE && player.CanRightMove == TRUE)
+				{
+					player.CenterX += 5;
+				}
+				player.IsMove = TRUE;
+				if (player.status != PLAYER_STATUS_JUMP)
+				{
+					player.status = PLAYER_STATUS_MOVE_R;
+				}
+				player.muki = MUKI_R;
 			}
-			player.IsMove = TRUE;
-			if (player.status != PLAYER_STATUS_JUMP)
+			if (MY_KEY_DOWN(KEY_INPUT_LEFT) == TRUE && MY_KEY_DOWN(KEY_INPUT_RIGHT) != TRUE)
 			{
-				player.status = PLAYER_STATUS_MOVE_R;
+				if (player.x > 0 && player.CanLeftMove == TRUE)
+				{
+					player.CenterX -= 5;
+				}
+				player.IsMove = TRUE;
+				if (player.status != PLAYER_STATUS_JUMP)
+				{
+					player.status = PLAYER_STATUS_MOVE_L;
+				}
+				player.muki = MUKI_L;
 			}
-			player.muki = MUKI_R;
-		}
-		if (MY_KEY_DOWN(KEY_INPUT_LEFT) == TRUE && MY_KEY_DOWN(KEY_INPUT_RIGHT) != TRUE)
-		{
-			if (player.x > 0 && player.CanLeftMove == TRUE)
-			{
-				player.CenterX -= 5;
-			}
-			player.IsMove = TRUE;
-			if (player.status != PLAYER_STATUS_JUMP)
-			{
-				player.status = PLAYER_STATUS_MOVE_L;
-			}
-			player.muki = MUKI_L;
 		}
 		if (MY_KEY_DOWN(KEY_INPUT_DOWN) == TRUE)
 		{
@@ -895,12 +903,14 @@ VOID PLAYER_MOVE(VOID)
 	PLAYER_ATTACK_PROC();
 	player.x = player.CenterX - player.width / 2;
 	player.y = player.CenterY - player.height / 2;
-
-	if (MY_KEY_DOWN(KEY_INPUT_RIGHT) != TRUE && MY_KEY_DOWN(KEY_INPUT_LEFT) != TRUE 
-		&& player.status != PLAYER_STATUS_JUMP && player.status != PLAYER_STATUS_SQUAT)
+	player.CanMove = TRUE;
+	player.CanRightMove = TRUE;
+	player.CanLeftMove = TRUE;
+	if (MY_KEY_DOWN(KEY_INPUT_UP) != TRUE)
 	{
-		player.status = PLAYER_STATUS_STOP;
+		player.CanJump = TRUE;
 	}
+	
 	if (player.y > GAME_HEIGHT)
 	{
 		EndKind = GAME_OVER;
@@ -961,7 +971,7 @@ VOID PLAYER_ATTACK_PROC(VOID)
 					player.attack[i].IsDraw = TRUE;
 					if (CheckSoundMem(AttackSE.handle) == 0)
 					{
-						ChangeVolumeSoundMem(25 * 1 / 100, TitleBGM.handle);
+						ChangeVolumeSoundMem(255 * 30 / 100, AttackSE.handle);
 						PlaySoundMem(AttackSE.handle, DX_PLAYTYPE_BACK);
 					}
 					break;
@@ -1180,7 +1190,7 @@ VOID COLL_PROC(VOID)
 				enemy[MY_CHECK_ENEMY_COLL(player.attack[i].coll)].IsDraw = FALSE;
 				if (CheckSoundMem(DefeatSE.handle) == 0)
 				{
-					ChangeVolumeSoundMem(255 * 10 / 100, TitleBGM.handle);
+					ChangeVolumeSoundMem(255 * 60 / 100, DefeatSE.handle);
 					PlaySoundMem(DefeatSE.handle, DX_PLAYTYPE_BACK);
 				}
 			}
@@ -1213,10 +1223,7 @@ VOID COLL_PROC(VOID)
 	player.coll.CheckLeft.bottom = player.coll.base.bottom;
 
 
-	player.CanMove = TRUE;
-	player.CanRightMove = TRUE;
-	player.CanLeftMove = TRUE;
-	player.CanJump = TRUE;
+	
 	for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
 	{
 		for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
@@ -1264,7 +1271,7 @@ VOID COLL_PROC(VOID)
 		EndKind = GAME_CLEAR;
 		if (CheckSoundMem(GoalSE.handle) == 0)
 		{
-			ChangeVolumeSoundMem(255 * 30 / 100, TitleBGM.handle);
+			ChangeVolumeSoundMem(255 * 50 / 100, GoalSE.handle);
 			PlaySoundMem(GoalSE.handle, DX_PLAYTYPE_BACK);
 		}
 		GameScene = GAME_SCENE_END;
