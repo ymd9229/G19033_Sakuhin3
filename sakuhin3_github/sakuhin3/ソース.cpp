@@ -178,6 +178,7 @@ typedef struct STRUCT_MAP
 typedef struct STRUCT_COLL
 {
 	RECT base;
+	RECT CheckItem;
 	RECT CheckLeft;
 	RECT CheckRight;
 	RECT CheckTop;
@@ -338,6 +339,7 @@ VOID COLL_PROC(VOID);
 BOOL MY_CHECK_RECT_COLL(RECT, RECT);
 INT MY_CHECK_ENEMY_COLL(RECT);
 INT MY_CHECK_MAP1_COLL(RECT,int*,int*);
+INT MY_CHECK_MAP1_ITEM_COLL(RECT);
 
 BOOL MY_LOAD_MUSIC(VOID);
 VOID MY_DELETE_MUSIC(VOID);
@@ -769,7 +771,7 @@ BOOL MY_LOAD_IMAGE(VOID)
 			stage1[tate][yoko].y = tate * stage1[tate][yoko].height;
 		}
 	}
-	int k;
+
 	for (int k = 0; k < ENEMY_IMAGE_KIND; k++)
 	{
 		switch (k)
@@ -1206,6 +1208,11 @@ VOID COLL_PROC(VOID)
 		player.coll.base.top = player.y + player.height / 2;
 	}
 
+	player.coll.CheckItem.right = player.coll.base.right - 10;
+	player.coll.CheckItem.left = player.coll.base.left + 10;
+	player.coll.CheckItem.top = player.coll.base.top;
+	player.coll.CheckItem.bottom = player.coll.base.bottom;
+
 	player.coll.CheckBottom.right = player.coll.base.right;
 	player.coll.CheckBottom.left = player.coll.base.left;
 	player.coll.CheckBottom.top = player.coll.base.top;
@@ -1266,7 +1273,7 @@ VOID COLL_PROC(VOID)
 	{
 		player.CanLeftMove = FALSE;
 	}
-	if (MY_CHECK_MAP1_COLL(player.coll.base, &x, &y) == GOAL)
+	if (MY_CHECK_MAP1_ITEM_COLL(player.coll.CheckItem) == GOAL)
 	{
 		EndKind = GAME_CLEAR;
 		if (CheckSoundMem(GoalSE.handle) == 0)
@@ -1288,6 +1295,29 @@ VOID COLL_PROC(VOID)
 
 INT MY_CHECK_MAP1_COLL(RECT a,int *x, int *y)
 {
+	
+	for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
+	{
+		for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
+		{
+			if (MY_CHECK_RECT_COLL(stage1[tate][yoko].coll, a) == TRUE)
+			{
+				if (stage1[tate][yoko].kind != ae &&
+					stage1[tate][yoko].kind != ag &&
+					stage1[tate][yoko].kind != ha)
+				{
+					*x = tate;
+					*y = yoko;
+					return BLOCK;
+				}
+			}
+		}
+	}
+	return -1;
+}
+
+INT MY_CHECK_MAP1_ITEM_COLL(RECT a)
+{
 	for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
 	{
 		for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
@@ -1298,24 +1328,16 @@ INT MY_CHECK_MAP1_COLL(RECT a,int *x, int *y)
 				{
 					return GOAL;
 				}
-				else if (stage1[tate][yoko].kind == ha)
+				if (stage1[tate][yoko].kind == ha)
 				{
 					stage1[tate][yoko].kind = ae;
 					return BOOK;
 				}
-				else if (stage1[tate][yoko].kind != ae)
-				{
-					*x = tate;
-					*y = yoko;
-					return BLOCK;
-				}
-				
 			}
 		}
 	}
 	return -1;
 }
-
 
 INT MY_CHECK_ENEMY_COLL(RECT player)
 {
