@@ -904,8 +904,7 @@ VOID PLAYER_MOVE(VOID)
 	player.x = player.CenterX - player.width / 2;
 	player.y = player.CenterY - player.height / 2;
 	player.CanMove = TRUE;
-	player.CanRightMove = TRUE;
-	player.CanLeftMove = TRUE;
+
 	if (MY_KEY_DOWN(KEY_INPUT_UP) != TRUE)
 	{
 		player.CanJump = TRUE;
@@ -1222,7 +1221,8 @@ VOID COLL_PROC(VOID)
 	player.coll.CheckLeft.top = player.coll.base.top;
 	player.coll.CheckLeft.bottom = player.coll.base.bottom;
 
-
+	player.CanRightMove = TRUE;
+	player.CanLeftMove = TRUE;
 	
 	for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
 	{
