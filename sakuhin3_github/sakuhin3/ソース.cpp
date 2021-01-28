@@ -26,12 +26,16 @@
 #define ENEMY_S_DIV_TATE   4
 #define ENEMY_S_DIV_YOKO   1
 #define ENEMY_S_DIV_NUM   ENEMY_S_DIV_TATE * ENEMY_S_DIV_YOKO
-#define ENEMY_DATE_MAX 1
+#define ENEMY_DATA_MAX 1
 #define ENEMY_MAX 20
 #define ENEMY_IMAGE_KIND 10
 
+#define MAGIC_DIV_WIDTH	80
+#define MAGIC_DIV_HEIGHT	80
+#define MAGIC_DIV_KIND   4
+#define MAGIC_DIV_STATE	 2
 #define MAGIC_DIV_TATE   4
-#define MAGIC_DIV_YOKO	 2
+#define MAGIC_DIV_YOKO	 1
 #define MAGIC_DIV_NUM   MAGIC_DIV_TATE * MAGIC_DIV_YOKO
 
 #define MAGIC_ICON_DIV_WIDTH	80
@@ -52,7 +56,7 @@
 
 #define PLAYER_TAMA_MAX 10
 #define PLAYER_MAGIC_MAX 3
-#define MAGIC_DATE_MAX 2
+#define MAGIC_DATA_MAX 2
 
 
 #define STAGE_MAX 5
@@ -70,6 +74,7 @@
 #define IMAGE_ENEMY1_PATH       TEXT(".\\IMAGE\\enemy1.png")
 #define IMAGE_BOOK_PATH       　TEXT(".\\IMAGE\\book.png")
 #define IMAGE_MAGIC_ICON_PATH   TEXT(".\\IMAGE\\MagicIcon.png")
+#define IMAGE_MAGIC_PATH		TEXT(".\\IMAGE\\magic.png")
 
 
 #define MUSIC_TITLE_BGM_PATH    TEXT(".\\MUSIC\\bgm_maoudamashii_healing01.mp3")
@@ -269,9 +274,10 @@ typedef struct STRUCT_MAGIC
 	int width;
 	int height;
 	COLL coll;
+	CHANGE_IMAGE change;
 }MAGIC;
 
-typedef struct STRUCT_MAGIC_DATE
+typedef struct STRUCT_MAGIC_DATA
 {
 	int StartX;
 	int StartY;
@@ -281,7 +287,7 @@ typedef struct STRUCT_MAGIC_DATE
 	int width;
 	int height;
 	MUSIC SE;
-}MAGIC_DATE;
+}MAGIC_DATA;
 
 typedef struct STRUCT_MAGIC_ICON
 {
@@ -310,7 +316,7 @@ typedef struct STRUCT_ENEMY
 	BOOL CanLeftMove = TRUE;
 }ENEMY;
 
-typedef struct STRUCT_ENEMY_DATE
+typedef struct STRUCT_ENEMY_DATA
 {
 	int StartX;
 	int StartY;
@@ -320,15 +326,15 @@ typedef struct STRUCT_ENEMY_DATE
 	int handle[ENEMY_S_DIV_NUM];
 	int width;
 	int height;
-}ENEMY_DATE;
+}ENEMY_DATA;
 
-ENEMY_DATE EnemyDate[ENEMY_DATE_MAX] = {
+ENEMY_DATA EnemyData[ENEMY_DATA_MAX] = {
 	//｛敵の出現位置X、敵の出現位置Y、敵の種類｝
 	{700,479,0,}
 };	//敵のデータ
 
 
-ENEMY_DATE EnemyImage[ENEMY_IMAGE_KIND];
+ENEMY_DATA EnemyImage[ENEMY_IMAGE_KIND];
 ENEMY enemy[ENEMY_MAX];
 IMAGE TitleBack;
 IMAGE TitleRogo;
@@ -342,7 +348,9 @@ MAPCHIP mapchip;
 MAP stage1[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX];
 PLAYER player;
 MAGIC magic[PLAYER_MAGIC_MAX];
-MAGIC_DATE MagicDate[MAGIC_DATE_MAX];
+MAGIC_DATA MagicData[MAGIC_DATA_MAX] = {
+	{0,0,}
+};
 MAGIC_ICON MagicIcon;
 int EndKind;                    //クリアかゲームオーバーか
 int StartTimeFps;				//測定開始時刻
@@ -651,15 +659,16 @@ VOID MY_START_PROC(VOID)
 		player.jump.CntMax = 20;
 		FallTime.CntMax = 10;
 		player.change.CntMax = 20;
+		player.MagicInterval.CntMax = 60;
 
 		screen.left = 0;
 		screen.right = GAME_WIDTH;
 		screen.top = 0;
 		screen.bottom = GAME_HEIGHT;
 
-		for (int m = 0; m < ENEMY_DATE_MAX; m++)
+		for (int m = 0; m < ENEMY_DATA_MAX; m++)
 		{
-			EnemyDate[m].IsDraw = FALSE;
+			EnemyData[m].IsDraw = FALSE;
 		}
 		for (int n = 0; n < ENEMY_MAX; n++)
 		{
@@ -947,10 +956,10 @@ BOOL MY_LOAD_IMAGE(VOID)
 			break;
 		}
 	}
-	for (int m = 0; m < ENEMY_DATE_MAX; m++)
+	for (int m = 0; m < ENEMY_DATA_MAX; m++)
 	{
-		EnemyDate[m].width = EnemyImage[EnemyDate[m].kind].width;
-		EnemyDate[m].height = EnemyImage[EnemyDate[m].kind].height;
+		EnemyData[m].width = EnemyImage[EnemyData[m].kind].width;
+		EnemyData[m].height = EnemyImage[EnemyData[m].kind].height;
 	}
 
 	strcpy_s(PoseIn.path, MOVIE_POSE_IN_PATH);
@@ -962,6 +971,13 @@ BOOL MY_LOAD_IMAGE(VOID)
 		MAGIC_ICON_DIV_WIDTH, MAGIC_ICON_DIV_HEIGHT,
 		&MagicIcon.handle[0]);
 	GetGraphSize(MagicIcon.handle[0], &MagicIcon.width, &MagicIcon.height);
+
+	LoadDivGraph(
+		IMAGE_MAGIC_PATH,
+		MAGIC_DIV_NUM, MAGIC_DIV_TATE, MAGIC_DIV_YOKO,
+		MAGIC_DIV_WIDTH, MAGIC_DIV_HEIGHT,
+		&MagicData[0].handle[0]);
+	GetGraphSize(MagicData[0].handle[0], &MagicData[0].width, &MagicData[0].height);
 
 	return TRUE;
 }
@@ -1182,11 +1198,14 @@ VOID MAGIC_PROC(VOID)
 			if (i != -1)
 			{
 				magic[i].No = player.EquipMagic;
-				MagicDate[player.EquipMagic].StartX = magic[i].x;
-				MagicDate[player.EquipMagic].StartY = magic[i].y;
-				MagicDate[player.EquipMagic].width = magic[i].width;
-				MagicDate[player.EquipMagic].height = magic[i].height;
-				MagicDate[player.EquipMagic].CoolTime = player.MagicInterval.CntMax;
+				MagicData[player.EquipMagic].StartX = magic[i].x;
+				MagicData[player.EquipMagic].StartY = magic[i].y;
+				MagicData[player.EquipMagic].width = magic[i].width;
+				MagicData[player.EquipMagic].height = magic[i].height;
+				MagicData[player.EquipMagic].CoolTime = player.MagicInterval.CntMax;
+
+				magic[i].CenterX = magic[i].x + magic[i].width / 2;
+				magic[i].CenterY = magic[i].y + magic[i].height / 2;
 
 				magic[i].IsDraw = TRUE;
 				player.CanMagic = FALSE;
@@ -1246,6 +1265,7 @@ VOID MAGIC_EFFECT(int i)
 	switch (magic[i].No)
 	{
 	case 0:
+		magic[i].CenterX += 10;
 		break;
 	}
 }
@@ -1368,11 +1388,26 @@ VOID PLAYER_ATTACK_DRAW(VOID)
 
 VOID MAGIC_DRAW(VOID)
 {
+	
 	for (int i = 0; i < PLAYER_MAGIC_MAX; i++)
 	{
+		magic[i].change.CntMax = 20;
+		magic[i].change.NowImage = player.EquipMagic * MAGIC_DIV_KIND;
 		if (magic[i].IsDraw == TRUE)
 		{
-
+			magic[i].change.cnt = CNT_CHECK(magic[i].change.cnt, magic[i].change.CntMax);
+			if (magic[i].change.cnt == 0)
+			{
+				if (magic[i].change.NowImage < player.EquipMagic + MAGIC_DIV_STATE)
+				{
+					magic[i].change.NowImage++;
+				}
+				else
+				{
+					magic[i].change.NowImage = player.EquipMagic * MAGIC_DIV_KIND;
+				}
+			}
+			DrawGraph(magic[i].x, magic[i].y, MagicData[0].handle[magic[i].change.NowImage], true);
 		}
 	}
 };
@@ -1563,6 +1598,13 @@ VOID COLL_PROC(VOID)
 	
 	player.x = player.CenterX - player.width / 2;
 	player.y = player.CenterY - player.height / 2;
+	for (int i = 0; i < PLAYER_MAGIC_MAX; i++)
+	{
+		magic[i].x = magic[i].CenterX - magic[i].width / 2;
+		magic[i].y = magic[i].CenterY - magic[i].height / 2;
+		magic[i].CenterX = magic[i].x + magic[i].width / 2;
+		magic[i].CenterY = magic[i].y + magic[i].height / 2;
+	}
 }
 
 INT MY_CHECK_MAP1_COLL(RECT a,int *x, int *y)
@@ -1674,26 +1716,26 @@ VOID STAGE_SCROLL(VOID)
 
 VOID ENEMY_PROC(VOID)
 {
-	for (int m = 0; m < ENEMY_DATE_MAX; m++)//敵のデータの数まで
+	for (int m = 0; m < ENEMY_DATA_MAX; m++)//敵のデータの数まで
 	{
-		if (EnemyDate[m].StartX > screen.left && EnemyDate[m].StartX < screen.right &&
-			EnemyDate[m].StartY > screen.top && EnemyDate[m].StartY < screen.bottom &&
-			EnemyDate[m].IsDraw == FALSE)//敵のスタート位置が画面内にあり、まだ一度もその敵を描画してないとき
+		if (EnemyData[m].StartX > screen.left && EnemyData[m].StartX < screen.right &&
+			EnemyData[m].StartY > screen.top && EnemyData[m].StartY < screen.bottom &&
+			EnemyData[m].IsDraw == FALSE)//敵のスタート位置が画面内にあり、まだ一度もその敵を描画してないとき
 		{
 			int n = ENEMY_CHECK();
 			if(n != -1)
 			{
 				//敵のデータを登録する
-				enemy[n].x = EnemyDate[m].StartX;
-				enemy[n].y = EnemyDate[m].StartY;
-				enemy[n].kind = EnemyDate[m].kind;
-				enemy[n].width = EnemyDate[m].width;
-				enemy[n].height = EnemyDate[m].height;
+				enemy[n].x = EnemyData[m].StartX;
+				enemy[n].y = EnemyData[m].StartY;
+				enemy[n].kind = EnemyData[m].kind;
+				enemy[n].width = EnemyData[m].width;
+				enemy[n].height = EnemyData[m].height;
 				enemy[n].CenterX = enemy[n].x + enemy[n].width / 2;
 				enemy[n].CenterY = enemy[n].y + enemy[n].height / 2;
 
 				enemy[n].IsDraw = TRUE;		//敵を描画できるようにする
-				EnemyDate[m].IsDraw = TRUE;		//ｍ番目のデータの敵は描画済み
+				EnemyData[m].IsDraw = TRUE;		//ｍ番目のデータの敵は描画済み
 			}
 		}
 	}
