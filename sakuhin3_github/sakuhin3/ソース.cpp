@@ -26,11 +26,11 @@
 #define ENEMY_S_DIV_TATE   4
 #define ENEMY_S_DIV_YOKO   1
 #define ENEMY_S_DIV_NUM   ENEMY_S_DIV_TATE * ENEMY_S_DIV_YOKO
-#define ENEMY_DATA_MAX 1
-#define ENEMY_MAX 20
-#define ENEMY_IMAGE_KIND 10
+#define ENEMY_DATA_MAX 1	//敵のデータの数
+#define ENEMY_MAX 10		//同時に出現することが出来る敵の数
+#define ENEMY_IMAGE_KIND 10	//敵の画像の種類の数
 
-#define MAGIC_DIV_WIDTH	80
+#define MAGIC_DIV_WIDTH		80
 #define MAGIC_DIV_HEIGHT	80
 #define MAGIC_DIV_KIND   4
 #define MAGIC_DIV_STATE	 2
@@ -41,7 +41,7 @@
 #define MAGIC_ICON_DIV_WIDTH	80
 #define MAGIC_ICON_DIV_HEIGHT	80
 #define MAGIC_ICON_DIV_TATE   4
-#define MAGIC_ICON_DIV_YOKO	 1
+#define MAGIC_ICON_DIV_YOKO	1
 #define MAGIC_ICON_DIV_NUM    MAGIC_ICON_DIV_TATE * MAGIC_ICON_DIV_YOKO
 
 #define MAP_DIV_WIDTH     80
@@ -50,16 +50,16 @@
 #define MAP_DIV_YOKO      8
 #define MAP_DIV_NUM  MAP_DIV_TATE * MAP_DIV_YOKO
 
-#define GAME_MAP_TATE_MAX   9
-#define GAME_MAP_YOKO_MAX   32
+#define GAME_MAP_TATE_MAX   9	//マップの縦のマスの数
+#define GAME_MAP_YOKO_MAX   32	//マップの横のマスの数
 #define GAME_MAP_KIND_MAX  2
 
-#define PLAYER_TAMA_MAX 10
+#define PLAYER_TAMA_MAX 2
 #define PLAYER_MAGIC_MAX 3
 #define MAGIC_DATA_MAX 2
 
 
-#define STAGE_MAX 5
+#define STAGE_MAX 1	//ステージ数
 
 #define IMAGE_PLAYER_PATH       TEXT(".\\IMAGE\\player.png")
 #define IMAGE_PLAYER_TAMA_PATH  TEXT(".\\IMAGE\\tama.png")
@@ -104,19 +104,19 @@ enum END_TYPE	//エンド画面の種類
 
 enum GAME_SCENE	//シーンの種類 
 {
-	GAME_SCENE_START,
-	GAME_SCENE_PLAY,
-	GAME_SCENE_END,
-	GAME_SCENE_POSE
+	GAME_SCENE_START,	//スタート画面
+	GAME_SCENE_PLAY,	//プレイ画面
+	GAME_SCENE_END,		//エンド画面
+	GAME_SCENE_POSE		//ポーズ画面
 };
 
 enum PLAYER_STATUS	//プレイヤーの状態
 {
-	PLAYER_STATUS_MOVE_R,
-	PLAYER_STATUS_MOVE_L,
-	PLAYER_STATUS_STOP,
-	PLAYER_STATUS_JUMP,
-	PLAYER_STATUS_SQUAT,
+	PLAYER_STATUS_MOVE_R,	//右に歩いている状態
+	PLAYER_STATUS_MOVE_L,	//左に歩いている状態
+	PLAYER_STATUS_STOP,		//立ち止まっている状態
+	PLAYER_STATUS_JUMP,		//ジャンプしている状態
+	PLAYER_STATUS_SQUAT,	//しゃがんでいる状態
 };
 
 enum MUKI	//向き
@@ -125,7 +125,7 @@ enum MUKI	//向き
 	MUKI_L,//左
 };
 
-enum CHECK_MAP_COLL
+enum CHECK_MAP_COLL		//マップの判定ごとの種類
 {
 	BLOCK,//ブロック（障害物）
 	AIR,	//空気（判定無し）
@@ -133,19 +133,22 @@ enum CHECK_MAP_COLL
 	BOOK,	//魔法の本
 };
 
-typedef struct STRUCT_I_POINT
+enum SPEED_KIND		//様々な速度
 {
-	int x = -1;
-	int y = -1;
-}iPOINT;
+	ENEMY_SPEED_SLOW = 1,		//遅い敵の速度
+	PLAYER_SPEED_NORMAL = 5,	//プレイヤーの通常時の速度
+	PLAYER_TAMA_SPEED = 30,		//プレイヤーの通常攻撃の弾の速度
+};
 
-typedef struct STRUCT_CNT
+//########構造体########
+
+typedef struct STRUCT_CNT	//カウントの構造体
 {
 	int cnt;
 	int CntMax;
 }CNT;
 
-typedef struct STRUCT_IMAGE  
+typedef struct STRUCT_IMAGE  //画像の構造体
 {
 	char path[PATH_MAX];		
 	int handle;					
@@ -155,7 +158,7 @@ typedef struct STRUCT_IMAGE
 	int height;					
 }IMAGE;	
 
-typedef struct STRUCT_MOVIE
+typedef struct STRUCT_MOVIE	//動画の構造体
 {
 	char path[PATH_MAX];
 	int handle;
@@ -166,20 +169,20 @@ typedef struct STRUCT_MOVIE
 	BOOL IsViewed = FALSE;
 }MOVIE;
 
-typedef struct STRUCT_MUSIC
+typedef struct STRUCT_MUSIC	//音楽の構造体
 {
 	char path[PATH_MAX];		
 	int handle;					
 }MUSIC;
 
-typedef struct STRUCT_CHANGE_IMAGE
+typedef struct STRUCT_CHANGE_IMAGE	//画像を変える時に使う構造体
 {
 	int NowImage;
 	int cnt;
 	int CntMax;
 }CHANGE_IMAGE;
 
-typedef struct STRUCT_MAP_IMAGE
+typedef struct STRUCT_MAP_IMAGE	//マップチップの構造体
 {
 	char path[PATH_MAX];
 	int handle[MAP_DIV_NUM];
@@ -190,7 +193,7 @@ typedef struct STRUCT_MAP_IMAGE
 	int height;
 }MAPCHIP;
 
-typedef struct STRUCT_MAP
+typedef struct STRUCT_MAP	//マップの構造体
 {
 	GAME_MAP_KIND kind;
 	int x;
@@ -200,7 +203,7 @@ typedef struct STRUCT_MAP
 	RECT coll;
 }MAP;
 
-typedef struct STRUCT_COLL
+typedef struct STRUCT_COLL	//判定の構造体
 {
 	RECT base;
 	RECT CheckItem;
@@ -210,7 +213,7 @@ typedef struct STRUCT_COLL
 	RECT CheckBottom;
 }COLL;
 
-typedef struct STRUCT_PLAYER_ATTACK
+typedef struct STRUCT_PLAYER_ATTACK	//プレイヤーの攻撃の構造体
 {
 	IMAGE image;
 	BOOL IsDraw;
@@ -219,14 +222,14 @@ typedef struct STRUCT_PLAYER_ATTACK
 	RECT coll;
 }PLAYER_ATTACK;
 
-typedef struct STRUCT_LIFE
+typedef struct STRUCT_LIFE	//体力の構造体
 {
 	int max;
 	int now = max;
 	CNT invincible;
 }LIFE;
 
-typedef struct STRUCT_PLAYER
+typedef struct STRUCT_PLAYER	//プレイヤーの構造体
 {
 	int x;
 	int y;
@@ -258,12 +261,7 @@ typedef struct STRUCT_PLAYER
 	PLAYER_ATTACK attack[PLAYER_TAMA_MAX];
 }PLAYER;
 
-typedef struct STRUCT_ITEM
-{
-	IMAGE image;
-}ITEM;
-
-typedef struct STRUCT_MAGIC
+typedef struct STRUCT_MAGIC	//魔法の構造体
 {
 	int No;
 	int x;
@@ -277,11 +275,12 @@ typedef struct STRUCT_MAGIC
 	CHANGE_IMAGE change;
 }MAGIC;
 
-typedef struct STRUCT_MAGIC_DATA
+typedef struct STRUCT_MAGIC_DATA	//魔法のデータの構造体
 {
 	int StartX;
 	int StartY;
 	int CoolTime;
+	BOOL fiexd = FALSE;
 	char path[PATH_MAX];
 	int handle[MAGIC_DIV_NUM];
 	int width;
@@ -289,7 +288,7 @@ typedef struct STRUCT_MAGIC_DATA
 	MUSIC SE;
 }MAGIC_DATA;
 
-typedef struct STRUCT_MAGIC_ICON
+typedef struct STRUCT_MAGIC_ICON	//魔法のアイコンの構造体
 {
 	char path[PATH_MAX];
 	int handle[MAGIC_ICON_DIV_NUM];
@@ -299,7 +298,7 @@ typedef struct STRUCT_MAGIC_ICON
 	int height;
 }MAGIC_ICON;
 
-typedef struct STRUCT_ENEMY
+typedef struct STRUCT_ENEMY		//敵の構造体
 {
 	double x;
 	double y;
@@ -316,7 +315,7 @@ typedef struct STRUCT_ENEMY
 	BOOL CanLeftMove = TRUE;
 }ENEMY;
 
-typedef struct STRUCT_ENEMY_DATA
+typedef struct STRUCT_ENEMY_DATA	//敵のデータの構造体
 {
 	int StartX;
 	int StartY;
@@ -328,28 +327,27 @@ typedef struct STRUCT_ENEMY_DATA
 	int height;
 }ENEMY_DATA;
 
+//########グローバル変数########
+
 ENEMY_DATA EnemyData[ENEMY_DATA_MAX] = {
 	//｛敵の出現位置X、敵の出現位置Y、敵の種類｝
 	{700,479,0,}
 };	//敵のデータ
-
-
 ENEMY_DATA EnemyImage[ENEMY_IMAGE_KIND];
 ENEMY enemy[ENEMY_MAX];
-IMAGE TitleBack;
-IMAGE TitleRogo;
-IMAGE ClearRogo;
-IMAGE OverRogo;
-IMAGE ClearBack;
-IMAGE OverBack;
+IMAGE TitleBack;		//タイトル背景
+IMAGE TitleRogo;		//タイトルロゴ
+IMAGE ClearRogo;		//クリア時のロゴ
+IMAGE OverRogo;			//ゲームオーバー時のロゴ
+IMAGE ClearBack;		//クリア時の背景
+IMAGE OverBack;			//ゲームオーバー時の背景
 IMAGE StageBack[STAGE_MAX];
-
 MAPCHIP mapchip;
 MAP stage1[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX];
 PLAYER player;
 MAGIC magic[PLAYER_MAGIC_MAX];
 MAGIC_DATA MagicData[MAGIC_DATA_MAX] = {
-	{0,0,}
+	{0,0,0,FALSE,}
 };
 MAGIC_ICON MagicIcon;
 int EndKind;                    //クリアかゲームオーバーか
@@ -362,18 +360,18 @@ int OldAllKeyState[256] = { 0 };	//すべてのキーの状態(直前)が入る
 int GameScene;					//ゲームシーンを管理
 int stage;						//何ステージ目か
 int gravity;					//重力
-CNT FallTime;
-int WalkCheckR;
-int WalkCheckL;
+CNT FallTime;					//落下している時間をカウントする用
+int WalkCheckR;					//右に歩いているか調べるよう
+int WalkCheckL;					//左に歩いているか調べるよう
 int AvailableMagic = 0;	//使用できる魔法の数
-MUSIC TitleBGM;
-MUSIC Stage1BGM;
-MUSIC GameClearBGM;
-MUSIC AttackSE;
-MUSIC DefeatSE;
-MUSIC GoalSE;
+MUSIC TitleBGM;			//タイトルの音楽
+MUSIC Stage1BGM;		//ステージ１の音楽
+MUSIC GameClearBGM;		//クリアした時の音楽
+MUSIC AttackSE;			//通常攻撃時の効果音
+MUSIC DefeatSE;			//敵を倒したときの効果音
+MUSIC GoalSE;			//ゴールしたときの効果音
 RECT screen;
-MOVIE PoseIn;
+MOVIE PoseIn;			//ポーズ画面に入るときの動画
 
 
 GAME_MAP_KIND stage1Data[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX]{
@@ -752,7 +750,7 @@ VOID MY_PLAY_PROC(VOID)
 //プレイ画面の描画
 VOID MY_PLAY_DRAW(VOID)
 {
-	DrawGraph(0, 0, StageBack[stage].handle, true);
+	DrawGraph(0, 0, StageBack[stage-1].handle, true);
 	PLAYER_DRAW();
 	MAGIC_ICON_DRAW();
 	for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
@@ -871,6 +869,7 @@ VOID MY_POSE_DRAW(VOID)		//ポーズ画面の描画
 		PlayMovieToGraph(PoseIn.handle);
 	}
 	DrawGraph(0, 0, PoseIn.handle, FALSE);
+	DrawString(0, 0, "ポーズ画面", GetColor(255, 255, 255));
 	return;
 }
 
@@ -902,11 +901,11 @@ BOOL MY_LOAD_IMAGE(VOID)
 	player.attack[0].image.handle = LoadGraph(player.attack[0].image.path);
 	GetGraphSize(player.attack[0].image.handle, &player.attack[0].image.width, &player.attack[0].image.height);
 
-	for (int i = 1; i < STAGE_MAX; i++)
+	for (int i = 0; i < STAGE_MAX; i++)
 	{
 		switch (i)
 		{
-		case 1:
+		case 0:
 			strcpy_s(StageBack[i].path, IMAGE_STAGE1_BACK_PATH);
 			StageBack[i].handle = LoadGraph(StageBack[i].path);
 			break;
@@ -1063,7 +1062,7 @@ VOID PLAYER_MOVE(VOID)
 			{
 				if (player.IsScroll == FALSE && player.CanRightMove == TRUE)
 				{
-					player.CenterX += 5;
+					player.CenterX += PLAYER_SPEED_NORMAL;
 				}
 				player.IsMove = TRUE;
 				if (player.status != PLAYER_STATUS_JUMP)
@@ -1076,7 +1075,7 @@ VOID PLAYER_MOVE(VOID)
 			{
 				if (player.x > 0 && player.CanLeftMove == TRUE)
 				{
-					player.CenterX -= 5;
+					player.CenterX -= PLAYER_SPEED_NORMAL;
 				}
 				player.IsMove = TRUE;
 				if (player.status != PLAYER_STATUS_JUMP)
@@ -1195,11 +1194,27 @@ VOID MAGIC_PROC(VOID)
 		if (player.CanMagic == TRUE)	//魔法が使える状態なら
 		{
 			i = MAGIC_CHECK();
-			if (i != -1)
+			if (i != -1 && player.EquipMagic != -1)
 			{
 				magic[i].No = player.EquipMagic;
-				MagicData[player.EquipMagic].StartX = magic[i].x;
-				MagicData[player.EquipMagic].StartY = magic[i].y;
+				if (MagicData[player.EquipMagic].fiexd == TRUE)//開始位置が固定のとき
+				{
+					magic[i].x = MagicData[player.EquipMagic].StartX;
+					magic[i].y = MagicData[player.EquipMagic].StartY;
+				}
+				else	//開始位置が固定じゃないとき
+				{
+					//プレイヤーの前方
+					if (player.muki == MUKI_R)//プレイヤーが右向きのとき
+					{
+						magic[i].x = player.x + player.width;
+					}
+					if (player.muki == MUKI_L)//プレイヤーが左向きのとき
+					{
+						magic[i].x = player.x;
+					}
+					magic[i].y = player.CenterY;
+				}
 				MagicData[player.EquipMagic].width = magic[i].width;
 				MagicData[player.EquipMagic].height = magic[i].height;
 				MagicData[player.EquipMagic].CoolTime = player.MagicInterval.CntMax;
@@ -1367,7 +1382,7 @@ VOID PLAYER_ATTACK_DRAW(VOID)
 				}
 				else
 				{
-					player.attack[i].image.x += 30;
+					player.attack[i].image.x += PLAYER_TAMA_SPEED;
 				}
 			}
 			if (player.attack[i].muki == MUKI_L)
@@ -1378,7 +1393,7 @@ VOID PLAYER_ATTACK_DRAW(VOID)
 				}
 				else
 				{
-					player.attack[i].image.x -= 30;
+					player.attack[i].image.x -= PLAYER_TAMA_SPEED;
 				}
 			}
 			
@@ -1392,13 +1407,13 @@ VOID MAGIC_DRAW(VOID)
 	for (int i = 0; i < PLAYER_MAGIC_MAX; i++)
 	{
 		magic[i].change.CntMax = 20;
-		magic[i].change.NowImage = player.EquipMagic * MAGIC_DIV_KIND;
+		//magic[i].change.NowImage = player.EquipMagic * MAGIC_DIV_KIND;
 		if (magic[i].IsDraw == TRUE)
 		{
 			magic[i].change.cnt = CNT_CHECK(magic[i].change.cnt, magic[i].change.CntMax);
 			if (magic[i].change.cnt == 0)
 			{
-				if (magic[i].change.NowImage < player.EquipMagic + MAGIC_DIV_STATE)
+				if (magic[i].change.NowImage < player.EquipMagic * MAGIC_DIV_KIND + MAGIC_DIV_STATE)
 				{
 					magic[i].change.NowImage++;
 				}
@@ -1434,6 +1449,7 @@ VOID COLL_PROC(VOID)
 		{
 			enemy[n].x = enemy[n].CenterX - enemy[n].width / 2;
 			enemy[n].y = enemy[n].CenterY - enemy[n].height / 2;
+
 			//敵の当たり判定
 
 			//基本の判定
@@ -1677,15 +1693,15 @@ VOID STAGE_SCROLL(VOID)
 			{
 				for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
 				{
-					stage1[tate][yoko].x -= 5;
+					stage1[tate][yoko].x -= PLAYER_SPEED_NORMAL;
 				}
 			}
 			for (int n = 0; n < ENEMY_MAX; n++)
 			{
-				enemy[n].CenterX -= 5;
+				enemy[n].CenterX -= PLAYER_SPEED_NORMAL;
 			}
-			screen.right -= 5;
-			screen.left -= 5;
+			screen.right -= PLAYER_SPEED_NORMAL;
+			screen.left -= PLAYER_SPEED_NORMAL;
 		}
 	}
 	else if (player.x <= 0 && player.CanLeftMove == TRUE && player.muki == MUKI_L)
@@ -1697,15 +1713,15 @@ VOID STAGE_SCROLL(VOID)
 			{
 				for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
 				{
-					stage1[tate][yoko].x += 5;
+					stage1[tate][yoko].x += PLAYER_SPEED_NORMAL;
 				}
 			}
 			for (int n = 0; n < ENEMY_MAX; n++)
 			{
-				enemy[n].CenterX += 5;
+				enemy[n].CenterX += PLAYER_SPEED_NORMAL;
 			}
-			screen.right += 5;
-			screen.left += 5;
+			screen.right += PLAYER_SPEED_NORMAL;
+			screen.left += PLAYER_SPEED_NORMAL;
 		}
 	}
 	else
@@ -1769,12 +1785,12 @@ VOID ENEMY_MOVE(int n)
 		if (enemy[n].CanLeftMove == TRUE)
 		{
 			enemy[n].muki = MUKI_L;
-			enemy[n].CenterX--;
+			enemy[n].CenterX -= ENEMY_SPEED_SLOW;
 		}
 		if (enemy[n].CanRightMove == TRUE)
 		{
 			enemy[n].muki = MUKI_R;
-			enemy[n].CenterX++;
+			enemy[n].CenterX += ENEMY_SPEED_SLOW;
 		}
 		break;
 	case 1:

@@ -1,8 +1,8 @@
 ﻿  ソース.cpp
-C:\Users\g19033\Documents\sakuhin3\sakuhin3_github\sakuhin3\ソース.cpp(1134,38): warning C4244: '=': 'double' から 'LONG' への変換です。データが失われる可能性があります。
-C:\Users\g19033\Documents\sakuhin3\sakuhin3_github\sakuhin3\ソース.cpp(1135,42): warning C4244: '=': 'double' から 'LONG' への変換です。データが失われる可能性があります。
-C:\Users\g19033\Documents\sakuhin3\sakuhin3_github\sakuhin3\ソース.cpp(1136,37): warning C4244: '=': 'double' から 'LONG' への変換です。データが失われる可能性があります。
-C:\Users\g19033\Documents\sakuhin3\sakuhin3_github\sakuhin3\ソース.cpp(1137,43): warning C4244: '=': 'double' から 'LONG' への変換です。データが失われる可能性があります。
-C:\Users\g19033\Documents\sakuhin3\sakuhin3_github\sakuhin3\ソース.cpp(1477,13): warning C4244: '引数': 'double' から 'int' への変換です。データが失われる可能性があります。
-C:\Users\g19033\Documents\sakuhin3\sakuhin3_github\sakuhin3\ソース.cpp(1476,13): warning C4244: '引数': 'double' から 'int' への変換です。データが失われる可能性があります。
+C:\Users\g19033\Documents\sakuhin3\sakuhin3_github\sakuhin3\ソース.cpp(1456,38): warning C4244: '=': 'double' から 'LONG' への変換です。データが失われる可能性があります。
+C:\Users\g19033\Documents\sakuhin3\sakuhin3_github\sakuhin3\ソース.cpp(1457,42): warning C4244: '=': 'double' から 'LONG' への変換です。データが失われる可能性があります。
+C:\Users\g19033\Documents\sakuhin3\sakuhin3_github\sakuhin3\ソース.cpp(1458,37): warning C4244: '=': 'double' から 'LONG' への変換です。データが失われる可能性があります。
+C:\Users\g19033\Documents\sakuhin3\sakuhin3_github\sakuhin3\ソース.cpp(1459,43): warning C4244: '=': 'double' から 'LONG' への変換です。データが失われる可能性があります。
+C:\Users\g19033\Documents\sakuhin3\sakuhin3_github\sakuhin3\ソース.cpp(1809,13): warning C4244: '引数': 'double' から 'int' への変換です。データが失われる可能性があります。
+C:\Users\g19033\Documents\sakuhin3\sakuhin3_github\sakuhin3\ソース.cpp(1808,13): warning C4244: '引数': 'double' から 'int' への変換です。データが失われる可能性があります。
   sakuhin3.vcxproj -> C:\Users\g19033\Documents\sakuhin3\sakuhin3_github\sakuhin3\Debug\sakuhin3.exe
