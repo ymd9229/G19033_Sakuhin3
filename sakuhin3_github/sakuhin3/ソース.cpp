@@ -1,4 +1,5 @@
 #include "DxLib.h"
+#include <stdlib.h>
 
 #define GAME_WIDTH	1280	//画面の横のサイズ
 #define GAME_HEIGHT	720		//画面の縦のサイズ
@@ -26,7 +27,7 @@
 #define ENEMY_S_DIV_TATE   4
 #define ENEMY_S_DIV_YOKO   1
 #define ENEMY_S_DIV_NUM   ENEMY_S_DIV_TATE * ENEMY_S_DIV_YOKO
-#define ENEMY_DATA_MAX 1	//敵のデータの数
+#define ENEMY_DATA_MAX 2	//敵のデータの数
 #define ENEMY_MAX 10		//同時に出現することが出来る敵の数
 #define ENEMY_IMAGE_KIND 10	//敵の画像の種類の数
 
@@ -63,6 +64,7 @@
 
 #define IMAGE_PLAYER_PATH       TEXT(".\\IMAGE\\player.png")
 #define IMAGE_PLAYER_TAMA_PATH  TEXT(".\\IMAGE\\tama.png")
+#define IMAGE_PLAYER_HEART_PATH TEXT(".\\IMAGE\\heart.png")
 #define IMAGE_TITLE_BACK_PATH   TEXT(".\\IMAGE\\TitleBack.png")
 #define IMAGE_TITLE_ROGO_PATH   TEXT(".\\IMAGE\\TitleRogo.png")
 #define IMAGE_CLEAR_ROGO_PATH   TEXT(".\\IMAGE\\ClearRogo.png")
@@ -72,6 +74,7 @@
 #define IMAGE_STAGE1_BACK_PATH  TEXT(".\\IMAGE\\Stage1Back.png")
 #define IMAGE_MAP1_PATH         TEXT(".\\IMAGE\\map1.png")
 #define IMAGE_ENEMY1_PATH       TEXT(".\\IMAGE\\enemy1.png")
+#define IMAGE_ENEMY2_PATH       TEXT(".\\IMAGE\\enemy2.png")
 #define IMAGE_BOOK_PATH       　TEXT(".\\IMAGE\\book.png")
 #define IMAGE_MAGIC_ICON_PATH   TEXT(".\\IMAGE\\MagicIcon.png")
 #define IMAGE_MAGIC_PATH		TEXT(".\\IMAGE\\magic.png")
@@ -84,6 +87,7 @@
 #define MUSIC_ATTACK_SE_PATH    TEXT(".\\MUSIC\\se_maoudamashii_retro16.mp3")
 #define MUSIC_DEFEAT_SE_PATH    TEXT(".\\MUSIC\\se_maoudamashii_retro04.mp3")
 #define MUSIC_GOAL_SE_PATH		TEXT(".\\MUSIC\\se_maoudamashii_onepoint09.mp3")
+#define MUSIC_HIT_SE_PATH		TEXT(".\\MUSIC\\se_maoudamashii_battle07.mp3")
 
 #define MOVIE_POSE_IN_PATH      TEXT(".\\MOVIE\\pose.mp4")
 
@@ -131,6 +135,7 @@ enum CHECK_MAP_COLL		//マップの判定ごとの種類
 	AIR,	//空気（判定無し）
 	GOAL,	//ゴール地点
 	BOOK,	//魔法の本
+	WOOD,
 };
 
 enum SPEED_KIND		//様々な速度
@@ -226,7 +231,9 @@ typedef struct STRUCT_LIFE	//体力の構造体
 {
 	int max;
 	int now = max;
-	CNT invincible;
+	BOOL invincible;
+	CNT InvincibleCnt;
+	IMAGE image;
 }LIFE;
 
 typedef struct STRUCT_PLAYER	//プレイヤーの構造体
@@ -255,7 +262,8 @@ typedef struct STRUCT_PLAYER	//プレイヤーの構造体
 	CNT MagicInterval;
 	BOOL CanRightMove = TRUE;
 	BOOL CanLeftMove = TRUE;
-	BOOL CanJump = FALSE;
+	int CanJumpTimes = 1;
+	int NowJumpTimes = 0;
 	BOOL IsMove = FALSE;
 	BOOL IsScroll = FALSE;
 	PLAYER_ATTACK attack[PLAYER_TAMA_MAX];
@@ -268,10 +276,12 @@ typedef struct STRUCT_MAGIC	//魔法の構造体
 	int y;
 	int CenterX;
 	int CenterY;
+	BOOL IsBuff = FALSE;
 	BOOL IsDraw = FALSE;
 	int width;
 	int height;
-	COLL coll;
+	int muki;
+	RECT coll;
 	CHANGE_IMAGE change;
 }MAGIC;
 
@@ -280,6 +290,7 @@ typedef struct STRUCT_MAGIC_DATA	//魔法のデータの構造体
 	int StartX;
 	int StartY;
 	int CoolTime;
+	BOOL IsBuff = FALSE;
 	BOOL fiexd = FALSE;
 	char path[PATH_MAX];
 	int handle[MAGIC_DIV_NUM];
@@ -304,6 +315,7 @@ typedef struct STRUCT_ENEMY		//敵の構造体
 	double y;
 	double CenterX;
 	double CenterY;
+	int speed;
 	int muki;
 	int kind;
 	int width;
@@ -311,6 +323,7 @@ typedef struct STRUCT_ENEMY		//敵の構造体
 	CHANGE_IMAGE change;
 	COLL coll;
 	BOOL IsDraw = FALSE;
+	BOOL IsFly;
 	BOOL CanRightMove = TRUE;
 	BOOL CanLeftMove = TRUE;
 }ENEMY;
@@ -320,6 +333,7 @@ typedef struct STRUCT_ENEMY_DATA	//敵のデータの構造体
 	int StartX;
 	int StartY;
 	int kind;
+	BOOL IsFly;
 	BOOL IsDraw = FALSE;
 	char path[PATH_MAX];
 	int handle[ENEMY_S_DIV_NUM];
@@ -331,7 +345,8 @@ typedef struct STRUCT_ENEMY_DATA	//敵のデータの構造体
 
 ENEMY_DATA EnemyData[ENEMY_DATA_MAX] = {
 	//｛敵の出現位置X、敵の出現位置Y、敵の種類｝
-	{700,479,0,}
+	{700,480,0,FALSE},
+	{1000,240,1,TRUE},
 };	//敵のデータ
 ENEMY_DATA EnemyImage[ENEMY_IMAGE_KIND];
 ENEMY enemy[ENEMY_MAX];
@@ -341,13 +356,15 @@ IMAGE ClearRogo;		//クリア時のロゴ
 IMAGE OverRogo;			//ゲームオーバー時のロゴ
 IMAGE ClearBack;		//クリア時の背景
 IMAGE OverBack;			//ゲームオーバー時の背景
+IMAGE PlayerLife;
 IMAGE StageBack[STAGE_MAX];
 MAPCHIP mapchip;
 MAP stage1[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX];
 PLAYER player;
 MAGIC magic[PLAYER_MAGIC_MAX];
 MAGIC_DATA MagicData[MAGIC_DATA_MAX] = {
-	{0,0,0,FALSE,}
+	{0,0,0,FALSE,FALSE,},
+	{0,0,0,TRUE,FALSE,},
 };
 MAGIC_ICON MagicIcon;
 int EndKind;                    //クリアかゲームオーバーか
@@ -363,6 +380,7 @@ int gravity;					//重力
 CNT FallTime;					//落下している時間をカウントする用
 int WalkCheckR;					//右に歩いているか調べるよう
 int WalkCheckL;					//左に歩いているか調べるよう
+int JumpBuff = 0;
 int AvailableMagic = 0;	//使用できる魔法の数
 MUSIC TitleBGM;			//タイトルの音楽
 MUSIC Stage1BGM;		//ステージ１の音楽
@@ -370,6 +388,7 @@ MUSIC GameClearBGM;		//クリアした時の音楽
 MUSIC AttackSE;			//通常攻撃時の効果音
 MUSIC DefeatSE;			//敵を倒したときの効果音
 MUSIC GoalSE;			//ゴールしたときの効果音
+MUSIC HitSE;			//ダメージを受けたときの効果音
 RECT screen;
 MOVIE PoseIn;			//ポーズ画面に入るときの動画
 
@@ -379,9 +398,9 @@ GAME_MAP_KIND stage1Data[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX]{
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
-	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
+	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,af,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ag,
-	aa,ae,ae,ae,ac,ae,ac,ae,ae,ae,ae,ae,ae,ae,ae,ad,ae,ha,ae,ae,ae,ga,ae,ae,ae,ae,ae,ae,ae,ae,ae,ad,
+	aa,ae,ae,ae,ac,ae,ac,ae,ae,ae,ae,ae,ae,ae,ae,ad,ae,ha,ae,ha,ae,ga,ae,ae,ae,ae,ae,ae,ae,ae,ae,ad,
 	aa,ab,ac,ab,bb,ae,bb,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,bd,
 	ba,bb,bc,bb,bc,ae,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bd,
 };
@@ -423,6 +442,9 @@ INT CNT_CHECK(int, int);		//cntをインクリメントして値を返す、CntMaxと同じ値なら0
 VOID PLAYER_MOVE(VOID);		//プレイヤーの動きの処理
 VOID PLAYER_DRAW(VOID);		//プレイヤーの描画
 VOID PLAYER_JUMP(VOID);		//プレイヤーのジャンプの処理
+VOID PLAYER_ATTACK_PROC(VOID);	//プレイヤーの通常攻撃の処理
+VOID PLAYER_ATTACK_DRAW(VOID);	//プレイヤーの通常攻撃の描画
+VOID PLAYER_LIFE_DRAW(VOID);
 
 VOID STAGE_SCROLL(VOID);	//スクロールの処理
 
@@ -432,8 +454,7 @@ INT MY_CHECK_ENEMY_COLL(RECT);
 INT MY_CHECK_MAP1_COLL(RECT,int*,int*);		//マップの障害物　対　敵かプレイヤーの判定
 INT MY_CHECK_MAP1_ITEM_COLL(RECT);			//マップのアイテム　対　プレイヤーの判定
 
-VOID PLAYER_ATTACK_PROC(VOID);	//プレイヤーの通常攻撃の処理
-VOID PLAYER_ATTACK_DRAW(VOID);	//プレイヤーの通常攻撃の描画
+VOID STAGE_DRAW(VOID);
 
 VOID ENEMY_PROC(VOID);		//敵の処理
 VOID ENEMY_DRAW(VOID);		//敵の描画
@@ -646,9 +667,10 @@ VOID MY_START_PROC(VOID)
 		player.y = 0;
 		player.CenterX = player.x + player.width / 2;
 		player.CenterY = player.y + player.height / 2;
-
+		player.life.max = 3;
+		player.life.now = player.life.max;
 		player.EquipMagic = -1;
-
+		player.life.InvincibleCnt.CntMax = 180;
 		stage = 1;
 
 		gravity = 10;
@@ -658,7 +680,8 @@ VOID MY_START_PROC(VOID)
 		FallTime.CntMax = 10;
 		player.change.CntMax = 20;
 		player.MagicInterval.CntMax = 60;
-
+		player.CanJumpTimes = 1;
+		player.NowJumpTimes = 0;
 		screen.left = 0;
 		screen.right = GAME_WIDTH;
 		screen.top = 0;
@@ -753,21 +776,8 @@ VOID MY_PLAY_DRAW(VOID)
 	DrawGraph(0, 0, StageBack[stage-1].handle, true);
 	PLAYER_DRAW();
 	MAGIC_ICON_DRAW();
-	for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
-	{
-		for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
-		{
-			DrawGraph(
-				stage1[tate][yoko].x,
-				stage1[tate][yoko].y,
-				mapchip.handle[stage1[tate][yoko].kind],
-				TRUE);
-			DrawBox(stage1[tate][yoko].x, stage1[tate][yoko].y,
-					stage1[tate][yoko].x + stage1[tate][yoko].width,
-					stage1[tate][yoko].y + stage1[tate][yoko].height,
-					GetColor(0, 255, 255), FALSE);
-		}
-	}
+	STAGE_DRAW();
+	PLAYER_LIFE_DRAW();
 	DrawBox(player.coll.base.left, player.coll.base.top, player.coll.base.right, player.coll.base.bottom, GetColor(0, 0, 255), FALSE);
 	DrawBox(player.coll.CheckRight.left, player.coll.CheckRight.top,
 		player.coll.CheckRight.right, player.coll.CheckRight.bottom,
@@ -896,6 +906,9 @@ BOOL MY_LOAD_IMAGE(VOID)
 	strcpy_s(OverBack.path, IMAGE_OVER_BK_PATH);
 	OverBack.handle = LoadGraph(OverBack.path);
 
+	strcpy_s(PlayerLife.path, IMAGE_PLAYER_HEART_PATH);
+	PlayerLife.handle = LoadGraph(PlayerLife.path);
+	GetGraphSize(PlayerLife.handle, &PlayerLife.width, &PlayerLife.height);
 
 	strcpy_s(player.attack[0].image.path, IMAGE_PLAYER_TAMA_PATH);
 	player.attack[0].image.handle = LoadGraph(player.attack[0].image.path);
@@ -952,6 +965,12 @@ BOOL MY_LOAD_IMAGE(VOID)
 			GetGraphSize(EnemyImage[k].handle[0], &EnemyImage[k].width, &EnemyImage[k].height);
 			break;
 		case 1:
+			LoadDivGraph(
+				IMAGE_ENEMY2_PATH,
+				ENEMY_S_DIV_NUM, ENEMY_S_DIV_TATE, ENEMY_S_DIV_YOKO,
+				ENEMY_S_DIV_WIDTH, ENEMY_S_DIV_HEIGHT,
+				&EnemyImage[k].handle[0]);
+			GetGraphSize(EnemyImage[k].handle[0], &EnemyImage[k].width, &EnemyImage[k].height);
 			break;
 		}
 	}
@@ -1016,6 +1035,8 @@ BOOL MY_LOAD_MUSIC(VOID)
 	DefeatSE.handle = LoadSoundMem(DefeatSE.path);
 	strcpy_s(GoalSE.path, MUSIC_GOAL_SE_PATH);
 	GoalSE.handle = LoadSoundMem(GoalSE.path);
+	strcpy_s(HitSE.path, MUSIC_HIT_SE_PATH);
+	HitSE.handle = LoadSoundMem(HitSE.path);
 	return TRUE;
 }
 
@@ -1027,6 +1048,7 @@ VOID MY_DELETE_MUSIC(VOID)
 	DeleteSoundMem(AttackSE.handle);
 	DeleteSoundMem(DefeatSE.handle);
 	DeleteSoundMem(GoalSE.handle);
+	DeleteSoundMem(HitSE.handle);
 }
 
 INT CNT_CHECK(int cnt, int CntMax)
@@ -1039,6 +1061,33 @@ INT CNT_CHECK(int cnt, int CntMax)
 	return cnt;
 }
 
+VOID STAGE_DRAW(VOID)
+{
+	for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
+	{
+		for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
+		{
+			DrawGraph(
+				stage1[tate][yoko].x,
+				stage1[tate][yoko].y,
+				mapchip.handle[stage1[tate][yoko].kind],
+				TRUE);
+			DrawBox(stage1[tate][yoko].x, stage1[tate][yoko].y,
+				stage1[tate][yoko].x + stage1[tate][yoko].width,
+				stage1[tate][yoko].y + stage1[tate][yoko].height,
+				GetColor(0, 255, 255), FALSE);
+		}
+	}
+}
+
+VOID PLAYER_LIFE_DRAW(VOID)
+{
+	for (int i = 0; i < player.life.now;i++)
+	{
+		DrawGraph(PlayerLife.width * i - 1, 0, PlayerLife.handle, TRUE);
+	}
+}
+
 VOID PLAYER_MOVE(VOID)
 {
 	player.IsMove = FALSE;
@@ -1049,11 +1098,12 @@ VOID PLAYER_MOVE(VOID)
 		{
 			player.status = PLAYER_STATUS_STOP;
 		}
-		if (MY_KEY_DOWN(KEY_INPUT_UP) == TRUE)
+		if (MY_KEY_DOWN_MOMENT(KEY_INPUT_UP) == TRUE)
 		{
-			if (player.CanJump == TRUE)
+			if (player.NowJumpTimes < player.CanJumpTimes)
 			{
 				player.status = PLAYER_STATUS_JUMP;
+				player.NowJumpTimes++;
 			}
 		}
 		if (MY_KEY_DOWN(KEY_INPUT_DOWN) != TRUE)
@@ -1102,11 +1152,6 @@ VOID PLAYER_MOVE(VOID)
 	player.x = player.CenterX - player.width / 2;
 	player.y = player.CenterY - player.height / 2;
 	player.CanMove = TRUE;
-
-	if (MY_KEY_DOWN(KEY_INPUT_UP) != TRUE)
-	{
-		player.CanJump = TRUE;
-	}
 	
 	if (player.y > GAME_HEIGHT)
 	{
@@ -1204,23 +1249,26 @@ VOID MAGIC_PROC(VOID)
 				}
 				else	//開始位置が固定じゃないとき
 				{
-					//プレイヤーの前方
+					//プレイヤーの前方から出る
 					if (player.muki == MUKI_R)//プレイヤーが右向きのとき
 					{
-						magic[i].x = player.x + player.width;
+						magic[i].CenterX = player.x + player.width;
+						magic[i].muki = MUKI_R;		//魔法の向きを右に決める
 					}
 					if (player.muki == MUKI_L)//プレイヤーが左向きのとき
 					{
-						magic[i].x = player.x;
+						magic[i].CenterX = player.x;
+						magic[i].muki = MUKI_L;		//魔法の向きを左に決める
 					}
-					magic[i].y = player.CenterY;
+					magic[i].CenterY = player.CenterY;
 				}
-				MagicData[player.EquipMagic].width = magic[i].width;
-				MagicData[player.EquipMagic].height = magic[i].height;
-				MagicData[player.EquipMagic].CoolTime = player.MagicInterval.CntMax;
+				magic[i].IsBuff = MagicData[player.EquipMagic].IsBuff;
+				magic[i].width = MagicData[0].width;
+				magic[i].height = MagicData[0].height;
+				//player.MagicInterval.CntMax = MagicData[player.EquipMagic].CoolTime;
 
-				magic[i].CenterX = magic[i].x + magic[i].width / 2;
-				magic[i].CenterY = magic[i].y + magic[i].height / 2;
+				magic[i].x = magic[i].CenterX - magic[i].width / 2;
+				magic[i].y = magic[i].CenterY - magic[i].height / 2;
 
 				magic[i].IsDraw = TRUE;
 				player.CanMagic = FALSE;
@@ -1280,14 +1328,20 @@ VOID MAGIC_EFFECT(int i)
 	switch (magic[i].No)
 	{
 	case 0:
+		if(magic[i].muki == MUKI_R)
 		magic[i].CenterX += 10;
+		if(magic[i].muki == MUKI_L)
+		magic[i].CenterX -= 10;
+		break;
+	case 1:
+		JumpBuff = 1;
+		magic[i].IsDraw = FALSE;
 		break;
 	}
 }
 
 VOID MAGIC_ICON_DRAW(VOID)
 {
-
 	DrawGraph(MagicIcon.x, MagicIcon.y, MagicIcon.handle[player.EquipMagic + 1], TRUE);
 }
 
@@ -1407,22 +1461,31 @@ VOID MAGIC_DRAW(VOID)
 	for (int i = 0; i < PLAYER_MAGIC_MAX; i++)
 	{
 		magic[i].change.CntMax = 20;
-		//magic[i].change.NowImage = player.EquipMagic * MAGIC_DIV_KIND;
 		if (magic[i].IsDraw == TRUE)
 		{
+			magic[i].x = magic[i].CenterX - magic[i].width / 2;
+			magic[i].y = magic[i].CenterY - magic[i].height / 2;	
+
 			magic[i].change.cnt = CNT_CHECK(magic[i].change.cnt, magic[i].change.CntMax);
 			if (magic[i].change.cnt == 0)
 			{
-				if (magic[i].change.NowImage < player.EquipMagic * MAGIC_DIV_KIND + MAGIC_DIV_STATE)
+				if (magic[i].change.NowImage < magic[i].No * MAGIC_DIV_KIND + MAGIC_DIV_STATE)
 				{
 					magic[i].change.NowImage++;
 				}
 				else
 				{
-					magic[i].change.NowImage = player.EquipMagic * MAGIC_DIV_KIND;
+					magic[i].change.NowImage = magic[i].No * MAGIC_DIV_KIND;
 				}
 			}
-			DrawGraph(magic[i].x, magic[i].y, MagicData[0].handle[magic[i].change.NowImage], true);
+			if (magic[i].IsBuff == FALSE)
+			{
+				DrawGraph(magic[i].x, magic[i].y, MagicData[0].handle[magic[i].change.NowImage], true);
+			}
+			if (magic[i].CenterX < 0 || magic[i].CenterX > GAME_WIDTH)
+			{
+				magic[i].IsDraw = FALSE;
+			}
 		}
 	}
 };
@@ -1453,9 +1516,9 @@ VOID COLL_PROC(VOID)
 			//敵の当たり判定
 
 			//基本の判定
-			enemy[n].coll.base.left = enemy[n].x;
-			enemy[n].coll.base.right = enemy[n].x + enemy[n].width;
-			enemy[n].coll.base.top = enemy[n].y;
+			enemy[n].coll.base.left = enemy[n].x + 15;
+			enemy[n].coll.base.right = enemy[n].x + enemy[n].width - 15;
+			enemy[n].coll.base.top = enemy[n].y + 15;
 			enemy[n].coll.base.bottom = enemy[n].y + enemy[n].height;
 			//下側に少し大きい判定
 			enemy[n].coll.CheckBottom.left = enemy[n].coll.base.left;
@@ -1484,7 +1547,7 @@ VOID COLL_PROC(VOID)
 				enemy[n].CanRightMove = FALSE;
 				enemy[n].CanLeftMove = TRUE;
 			}
-			if (MY_CHECK_MAP1_COLL(enemy[n].coll.CheckBottom, &x, &y) == -1)
+			if (MY_CHECK_MAP1_COLL(enemy[n].coll.CheckBottom, &x, &y) == -1 && enemy[n].IsFly == FALSE)
 			{
 				enemy[n].CenterY += 10;
 			}
@@ -1492,6 +1555,8 @@ VOID COLL_PROC(VOID)
 			{
 				enemy[n].CenterY = stage1[x][y].y - enemy[n].height / 2 - 1;
 			}
+			enemy[n].x = enemy[n].CenterX - enemy[n].width / 2;
+			enemy[n].y = enemy[n].CenterY - enemy[n].height / 2;
 		}
 	}
 
@@ -1523,6 +1588,18 @@ VOID COLL_PROC(VOID)
 		}
 	}
 
+
+	for (int i = 0; i < PLAYER_MAGIC_MAX; i++)
+	{
+		if (magic[i].IsDraw == TRUE && magic[i].IsBuff == FALSE)
+		{
+			magic[i].coll.right = magic[i].x + magic[i].width;
+			magic[i].coll.left = magic[i].x;
+			magic[i].coll.top = magic[i].y;
+			magic[i].coll.bottom = magic[i].y + magic[i].height;
+		}
+	}
+
 	player.coll.base.right = player.x + player.width - 25;
 	player.coll.base.left = player.x + 25;
 	player.coll.base.top = player.y;
@@ -1540,7 +1617,7 @@ VOID COLL_PROC(VOID)
 
 	player.coll.CheckBottom.right = player.coll.base.right;
 	player.coll.CheckBottom.left = player.coll.base.left;
-	player.coll.CheckBottom.top = player.coll.base.top;
+	player.coll.CheckBottom.top = player.coll.base.bottom;
 	player.coll.CheckBottom.bottom = player.coll.base.bottom + gravity;
 
 	player.coll.CheckRight.right = player.coll.base.right + 5;
@@ -1569,8 +1646,7 @@ VOID COLL_PROC(VOID)
 	
 	if (MY_CHECK_MAP1_COLL(player.coll.CheckBottom,&x,&y) == -1)	//プレイヤーが浮いているとき
 	{
-		player.CanJump = FALSE;		//ジャンプができないようにする
-		if (player.status != PLAYER_STATUS_JUMP)	//プレイヤーの状態がジャンプの時
+		if (player.status != PLAYER_STATUS_JUMP)	//プレイヤーの状態がジャンプ以外の時
 		{
 			player.CenterY += gravity;		//重力をかける
 			//空中にいる時間によって重力が大きくなっていく(重力加速度風)
@@ -1579,6 +1655,10 @@ VOID COLL_PROC(VOID)
 			{
 				gravity += 1;	
 			}
+			if (player.NowJumpTimes == 0)
+			{
+				player.CanJumpTimes = 0;
+			}
 		}
 	}
 	if(MY_CHECK_MAP1_COLL(player.coll.CheckBottom, &x, &y) == BLOCK)//下に地面があったら着地
@@ -1586,6 +1666,12 @@ VOID COLL_PROC(VOID)
 		player.CenterY = stage1[x][y].y - player.height / 2 - 1;	//下の地面の上に立たせる
 		FallTime.cnt = 0;	//落下時のカウントの初期化
 		gravity = 10;	//重力をもとに戻す
+		if (player.NowJumpTimes == player.CanJumpTimes)
+		{
+			JumpBuff = 0;
+		}
+		player.NowJumpTimes = 0;
+		player.CanJumpTimes = 1 + JumpBuff;
 	}
 	if (MY_CHECK_MAP1_COLL(player.coll.CheckRight, &x, &y) == BLOCK)//右に障害物
 	{
@@ -1606,21 +1692,37 @@ VOID COLL_PROC(VOID)
 		}
 		GameScene = GAME_SCENE_END;	//シーンをエンド画面に遷移
 	}
-	if (MY_CHECK_ENEMY_COLL(player.coll.base) != -1)
+	if (MY_CHECK_ENEMY_COLL(player.coll.base) != -1 && player.life.invincible == FALSE)
+	{
+		player.life.invincible = TRUE;
+		player.life.now--;
+		if (CheckSoundMem(HitSE.handle) == 0)
+		{
+			ChangeVolumeSoundMem(255 * 30 / 100, HitSE.handle);//30%のボリューム
+			PlaySoundMem(HitSE.handle, DX_PLAYTYPE_BACK);
+		}
+	}
+	if (player.life.now == 0)
 	{
 		EndKind = GAME_OVER;	//エンドの種類はゲームオーバー
 		GameScene = GAME_SCENE_END;	//シーンをエンド画面に遷移
 	}
-	
+	if (player.life.invincible == TRUE)
+	{
+		player.life.InvincibleCnt.cnt = CNT_CHECK(player.life.InvincibleCnt.cnt, player.life.InvincibleCnt.CntMax);
+		if (player.life.InvincibleCnt.cnt == 0)
+		{
+			player.life.invincible = FALSE;
+		}
+		if (player.life.InvincibleCnt.cnt % 2 == 1)
+			player.IsDraw = FALSE;
+		else
+			player.IsDraw = TRUE;
+	}
+
 	player.x = player.CenterX - player.width / 2;
 	player.y = player.CenterY - player.height / 2;
-	for (int i = 0; i < PLAYER_MAGIC_MAX; i++)
-	{
-		magic[i].x = magic[i].CenterX - magic[i].width / 2;
-		magic[i].y = magic[i].CenterY - magic[i].height / 2;
-		magic[i].CenterX = magic[i].x + magic[i].width / 2;
-		magic[i].CenterY = magic[i].y + magic[i].height / 2;
-	}
+	
 }
 
 INT MY_CHECK_MAP1_COLL(RECT a,int *x, int *y)
@@ -1749,6 +1851,7 @@ VOID ENEMY_PROC(VOID)
 				enemy[n].height = EnemyData[m].height;
 				enemy[n].CenterX = enemy[n].x + enemy[n].width / 2;
 				enemy[n].CenterY = enemy[n].y + enemy[n].height / 2;
+				enemy[n].IsFly = EnemyData[m].IsFly;
 
 				enemy[n].IsDraw = TRUE;		//敵を描画できるようにする
 				EnemyData[m].IsDraw = TRUE;		//ｍ番目のデータの敵は描画済み
@@ -1785,15 +1888,33 @@ VOID ENEMY_MOVE(int n)
 		if (enemy[n].CanLeftMove == TRUE)
 		{
 			enemy[n].muki = MUKI_L;
-			enemy[n].CenterX -= ENEMY_SPEED_SLOW;
+			enemy[n].speed = ENEMY_SPEED_SLOW;
+			enemy[n].CenterX -= enemy[n].speed;
 		}
 		if (enemy[n].CanRightMove == TRUE)
 		{
 			enemy[n].muki = MUKI_R;
-			enemy[n].CenterX += ENEMY_SPEED_SLOW;
+			enemy[n].speed = ENEMY_SPEED_SLOW;
+			enemy[n].CenterX += enemy[n].speed;
 		}
 		break;
 	case 1:
+		if (enemy[n].CenterX > player.CenterX)
+		{
+			enemy[n].muki = MUKI_L;
+		}
+		if (enemy[n].CenterX < player.CenterX)
+		{
+			enemy[n].muki = MUKI_R;
+		}
+		/*int DistanceX = player.CenterX - enemy[n].CenterX;
+		int DistanceY = player.CenterX - enemy[n].CenterX;
+		abs(DistanceX);
+		abs(DistanceY);
+		if (DistanceX > enemy[n].width * 4)
+		{
+
+		}*/
 		break;
 	}
 }
