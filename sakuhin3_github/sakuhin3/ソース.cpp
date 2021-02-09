@@ -1,5 +1,6 @@
 #include "DxLib.h"
 #include <stdlib.h>
+#include <math.h>
 
 #define GAME_WIDTH	1280	//画面の横のサイズ
 #define GAME_HEIGHT	720		//画面の縦のサイズ
@@ -344,7 +345,7 @@ typedef struct STRUCT_ENEMY_DATA	//敵のデータの構造体
 //########グローバル変数########
 
 ENEMY_DATA EnemyData[ENEMY_DATA_MAX] = {
-	//｛敵の出現位置X、敵の出現位置Y、敵の種類｝
+	//｛敵の出現位置X、敵の出現位置Y、敵の種類、飛行するかどうか｝
 	{700,480,0,FALSE},
 	{1000,240,1,TRUE},
 };	//敵のデータ
@@ -671,6 +672,7 @@ VOID MY_START_PROC(VOID)
 		player.life.now = player.life.max;
 		player.EquipMagic = -1;
 		player.life.InvincibleCnt.CntMax = 180;
+		player.life.InvincibleCnt.cnt = 0;
 		stage = 1;
 
 		gravity = 10;
@@ -1907,14 +1909,15 @@ VOID ENEMY_MOVE(int n)
 		{
 			enemy[n].muki = MUKI_R;
 		}
-		/*int DistanceX = player.CenterX - enemy[n].CenterX;
-		int DistanceY = player.CenterX - enemy[n].CenterX;
-		abs(DistanceX);
-		abs(DistanceY);
-		if (DistanceX > enemy[n].width * 4)
-		{
+		int DistanceX = player.CenterX - enemy[n].CenterX;
+		int DistanceY = player.CenterY - enemy[n].CenterY;
 
-		}*/
+		int Distance = sqrt(pow(DistanceX , 2) + pow(DistanceY , 2));
+		if (Distance < enemy[n].width * 5)
+		{
+			enemy[n].CenterX += (player.CenterX - enemy[n].CenterX) / Distance * 2;
+			enemy[n].CenterY += (player.CenterY - enemy[n].CenterY) / Distance * 2;
+		}
 		break;
 	}
 }
