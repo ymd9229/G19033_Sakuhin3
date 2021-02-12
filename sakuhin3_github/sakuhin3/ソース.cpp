@@ -375,10 +375,12 @@ float CalcFps;					//計算結果
 int SampleNumFps = GAME_FPS;	//平均を取るサンプル数
 int AllKeyState[256] = { 0 };		//すべてのキーの状態が入る
 int OldAllKeyState[256] = { 0 };	//すべてのキーの状態(直前)が入る
+BOOL IsPrecedence[256];
 int GameScene;					//ゲームシーンを管理
 int stage;						//何ステージ目か
 int gravity;					//重力
 CNT FallTime;					//落下している時間をカウントする用
+CNT precdence[256];
 int WalkCheckR;					//右に歩いているか調べるよう
 int WalkCheckL;					//左に歩いているか調べるよう
 int JumpBuff = 0;
@@ -395,14 +397,14 @@ MOVIE PoseIn;			//ポーズ画面に入るときの動画
 
 
 GAME_MAP_KIND stage1Data[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX]{
-	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
-	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
-	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
-	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
-	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,af,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
+	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,ae,ae,ae,ae,ae,ae,ae,
+	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,ae,ae,ae,ae,ae,ae,ae,
+	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,ae,ae,ae,ae,ae,ae,ae,
+	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,ae,ae,ae,ae,ae,ae,ae,
+	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,af,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,ae,ae,ae,ae,ae,ae,ae,
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ag,
-	aa,ae,ae,ae,ac,ae,ac,ae,ae,ae,ae,ae,ae,ae,ae,ad,ae,ha,ae,ha,ae,ga,ae,ae,ae,ae,ae,ae,ae,ae,ae,ad,
-	aa,ab,ac,ab,bb,ae,bb,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,bd,
+	aa,ae,ae,ae,ac,ae,ac,ae,ae,ae,ae,ae,ae,ae,ae,ad,ae,ha,ae,ha,ae,ae,ae,ae,ga,ae,ae,ae,ae,ae,ae,ad,
+	aa,ab,ac,ab,bb,ae,bb,ab,ac,ab,ac,ab,ac,ab,ac,bc,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,bd,
 	ba,bb,bc,bb,bc,ae,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bd,
 };
 
@@ -413,8 +415,9 @@ VOID MY_FPS_WAIT(VOID);				//FPS値を計測し、待つ関数
 VOID MY_ALL_KEYDOWN_UPDATE(VOID);	//キーの入力状態を更新する
 BOOL MY_KEY_DOWN(int);				//キーを押しているか、キーコードで判断する
 BOOL MY_KEY_UP(int);				//キーを押し上げたか、キーコードで判断する
-BOOL MY_KEYDOWN_KEEP(int, int);	//キーを押し続けているか、キーコードで判断する
-BOOL MY_KEY_DOWN_MOMENT(int);	//キーを押し始めたか、キーコードで判断する
+BOOL MY_KEY_DOWN_KEEP(int, int);	//キーを押し続けているか、キーコードで判断する
+BOOL MY_KEY_DOWN_MOMENT(int);		//キーを押し始めたか、キーコードで判断する
+BOOL MY_KEY_DOWN_PRECEDENCE(int);	//キーの先行入力用
 
 VOID MY_START(VOID);		//スタート画面
 VOID MY_START_PROC(VOID);	//スタート画面の処理
@@ -453,7 +456,7 @@ VOID COLL_PROC(VOID);		//当たり判定の処理
 BOOL MY_CHECK_RECT_COLL(RECT, RECT);	
 INT MY_CHECK_ENEMY_COLL(RECT);
 INT MY_CHECK_MAP1_COLL(RECT,int*,int*);		//マップの障害物　対　敵かプレイヤーの判定
-INT MY_CHECK_MAP1_ITEM_COLL(RECT);			//マップのアイテム　対　プレイヤーの判定
+INT MY_CHECK_MAP1_ACT_COLL(RECT);			//マップのアイテム　対　プレイヤーの判定
 
 VOID STAGE_DRAW(VOID);
 
@@ -607,7 +610,7 @@ BOOL MY_KEY_UP(int KEY_INPUT_)
 }
 
 
-BOOL MY_KEYDOWN_KEEP(int KEY_INPUT_, int DownTime)
+BOOL MY_KEY_DOWN_KEEP(int KEY_INPUT_, int DownTime)
 {
 	int UpdateTime = DownTime * GAME_FPS;
 
@@ -631,6 +634,25 @@ BOOL MY_KEY_DOWN_MOMENT(int KEY_INPUT_)
 		}
 	}
 	return FALSE;	//押し始めていない
+}
+
+BOOL MY_KEY_DOWN_PRECEDENCE(int key)
+{
+	if (IsPrecedence[key] == TRUE)
+	{
+		precdence[key].CntMax = 30;
+		precdence[key].cnt = CNT_CHECK(precdence[key].cnt, precdence[key].CntMax);
+		if (precdence[key].cnt != 0)
+		{
+			return TRUE;
+		}
+		else
+		{
+			IsPrecedence[key] = FALSE;
+			return FALSE;
+		}
+	}
+	return FALSE;
 }
 
 VOID MY_START(VOID)
@@ -760,6 +782,13 @@ VOID MY_PLAY_PROC(VOID)
 		PoseIn.IsViewed = FALSE;
 		GameScene = GAME_SCENE_POSE;
 	}
+
+	if (player.y > GAME_HEIGHT)
+	{
+		EndKind = GAME_OVER;
+		GameScene = GAME_SCENE_END;
+	}
+
 	if (MY_KEY_DOWN(KEY_INPUT_SPACE) == TRUE)
 	{
 		if (CheckSoundMem(Stage1BGM.handle) != 0)
@@ -777,8 +806,8 @@ VOID MY_PLAY_DRAW(VOID)
 {
 	DrawGraph(0, 0, StageBack[stage-1].handle, true);
 	PLAYER_DRAW();
-	MAGIC_ICON_DRAW();
 	STAGE_DRAW();
+	MAGIC_ICON_DRAW();
 	PLAYER_LIFE_DRAW();
 	DrawBox(player.coll.base.left, player.coll.base.top, player.coll.base.right, player.coll.base.bottom, GetColor(0, 0, 255), FALSE);
 	DrawBox(player.coll.CheckRight.left, player.coll.CheckRight.top,
@@ -1093,57 +1122,89 @@ VOID PLAYER_LIFE_DRAW(VOID)
 VOID PLAYER_MOVE(VOID)
 {
 	player.IsMove = FALSE;
-	if (player.CanMove == TRUE)
+
+	//プレイヤーが動けるとき
+	if (player.CanMove == TRUE)	
 	{
-		if (MY_KEY_DOWN(KEY_INPUT_RIGHT) != TRUE && MY_KEY_DOWN(KEY_INPUT_LEFT) != TRUE
-			&& player.status != PLAYER_STATUS_JUMP)
+		if (MY_KEY_DOWN(KEY_INPUT_RIGHT) != TRUE &&
+			MY_KEY_DOWN(KEY_INPUT_LEFT) != TRUE &&
+			player.status != PLAYER_STATUS_JUMP)	//右と左のキーを押していなくて、状態がジャンプ以外の時
 		{
-			player.status = PLAYER_STATUS_STOP;
+			player.status = PLAYER_STATUS_STOP;		//プレイヤーの状態を止まっている状態にする
 		}
-		if (MY_KEY_DOWN_MOMENT(KEY_INPUT_UP) == TRUE)
+
+		//上のキーを押したとき
+		if (MY_KEY_DOWN_MOMENT(KEY_INPUT_UP) == TRUE)	
 		{
-			if (player.NowJumpTimes < player.CanJumpTimes)
+			if (player.NowJumpTimes < player.CanJumpTimes)	//現在のジャンプ回数がジャンプできる回数未満の時
 			{
-				player.status = PLAYER_STATUS_JUMP;
-				player.NowJumpTimes++;
+				if (player.status != PLAYER_STATUS_JUMP)	//状態がジャンプ以外の時
+				{
+					player.status = PLAYER_STATUS_JUMP;		//プレイヤーの状態をジャンプ状態にする
+					player.NowJumpTimes++;					//現在のジャンプ数を増やす
+				}
+				else										//状態がジャンプの時
+				{
+					IsPrecedence[KEY_INPUT_UP] = TRUE;		//上のキーの先行入力開始
+				}
 			}
 		}
+
+		//下のキーを押していないとき
 		if (MY_KEY_DOWN(KEY_INPUT_DOWN) != TRUE)
 		{
+			//左のキーを押していなく、右のキーを押しているとき
 			if (MY_KEY_DOWN(KEY_INPUT_RIGHT) == TRUE && MY_KEY_DOWN(KEY_INPUT_LEFT) != TRUE)
 			{
-				if (player.IsScroll == FALSE && player.CanRightMove == TRUE)
+				if (player.IsScroll == FALSE &&
+					player.CanRightMove == TRUE)				//スクロールしていなく、右に動けるとき
 				{
-					player.CenterX += PLAYER_SPEED_NORMAL;
+					player.CenterX += PLAYER_SPEED_NORMAL;		
 				}
-				player.IsMove = TRUE;
-				if (player.status != PLAYER_STATUS_JUMP)
+				if (player.status != PLAYER_STATUS_JUMP)		//状態がジャンプ以外の時
 				{
-					player.status = PLAYER_STATUS_MOVE_R;
+					player.status = PLAYER_STATUS_MOVE_R;		//プレイヤーの状態を歩き(右)状態にする
 				}
-				player.muki = MUKI_R;
+				player.IsMove = TRUE;											
+				player.muki = MUKI_R;							//プレイヤーの向きは右
 			}
+
+			//右のキーを押していなく、左のキーを押しているとき
 			if (MY_KEY_DOWN(KEY_INPUT_LEFT) == TRUE && MY_KEY_DOWN(KEY_INPUT_RIGHT) != TRUE)
 			{
-				if (player.x > 0 && player.CanLeftMove == TRUE)
+				if (player.x > 0 && player.CanLeftMove == TRUE)					
 				{
 					player.CenterX -= PLAYER_SPEED_NORMAL;
 				}
-				player.IsMove = TRUE;
-				if (player.status != PLAYER_STATUS_JUMP)
+				if (player.status != PLAYER_STATUS_JUMP)		//状態がジャンプ以外の時
 				{
-					player.status = PLAYER_STATUS_MOVE_L;
+					player.status = PLAYER_STATUS_MOVE_L;		//プレイヤーの状態を歩き(左)状態にする
 				}
-				player.muki = MUKI_L;
+				player.IsMove = TRUE;
+				player.muki = MUKI_L;							//プレイヤーの向きは左
 			}
 		}
+
+		//下のキーを押しているとき
 		if (MY_KEY_DOWN(KEY_INPUT_DOWN) == TRUE)
 		{
-			if (player.status != PLAYER_STATUS_JUMP)
+			if (player.status != PLAYER_STATUS_JUMP)			//状態がジャンプ以外の時
 			{
-				player.status = PLAYER_STATUS_SQUAT;
+				player.status = PLAYER_STATUS_SQUAT;			//プレイヤーの状態をしゃがみ状態にする
 			}
 		}
+
+		if (MY_KEY_DOWN_PRECEDENCE(KEY_INPUT_UP) == TRUE)		
+		{
+			if (player.NowJumpTimes < player.CanJumpTimes &&
+				player.status != PLAYER_STATUS_JUMP && 
+				player.NowJumpTimes > 0)
+			{
+				player.NowJumpTimes++;
+				player.status = PLAYER_STATUS_JUMP;
+			}
+		}
+
 		if (player.status == PLAYER_STATUS_JUMP)
 		{
 			PLAYER_JUMP();
@@ -1151,15 +1212,11 @@ VOID PLAYER_MOVE(VOID)
 	}
 	PLAYER_ATTACK_PROC();
 	MAGIC_PROC();
+
 	player.x = player.CenterX - player.width / 2;
 	player.y = player.CenterY - player.height / 2;
+
 	player.CanMove = TRUE;
-	
-	if (player.y > GAME_HEIGHT)
-	{
-		EndKind = GAME_OVER;
-		GameScene = GAME_SCENE_END;
-	}
 }
 
 
@@ -1462,12 +1519,12 @@ VOID MAGIC_DRAW(VOID)
 	
 	for (int i = 0; i < PLAYER_MAGIC_MAX; i++)
 	{
-		magic[i].change.CntMax = 20;
 		if (magic[i].IsDraw == TRUE)
 		{
 			magic[i].x = magic[i].CenterX - magic[i].width / 2;
 			magic[i].y = magic[i].CenterY - magic[i].height / 2;	
 
+			magic[i].change.CntMax = 20;
 			magic[i].change.cnt = CNT_CHECK(magic[i].change.cnt, magic[i].change.CntMax);
 			if (magic[i].change.cnt == 0)
 			{
@@ -1522,6 +1579,11 @@ VOID COLL_PROC(VOID)
 			enemy[n].coll.base.right = enemy[n].x + enemy[n].width - 15;
 			enemy[n].coll.base.top = enemy[n].y + 15;
 			enemy[n].coll.base.bottom = enemy[n].y + enemy[n].height;
+			//
+			enemy[n].coll.CheckTop.left = enemy[n].coll.base.left;
+			enemy[n].coll.CheckTop.right = enemy[n].coll.base.right;
+			enemy[n].coll.CheckTop.top = enemy[n].coll.base.top + 10;
+			enemy[n].coll.CheckTop.bottom = enemy[n].coll.base.bottom;
 			//下側に少し大きい判定
 			enemy[n].coll.CheckBottom.left = enemy[n].coll.base.left;
 			enemy[n].coll.CheckBottom.right = enemy[n].coll.base.right;
@@ -1599,6 +1661,11 @@ VOID COLL_PROC(VOID)
 			magic[i].coll.left = magic[i].x;
 			magic[i].coll.top = magic[i].y;
 			magic[i].coll.bottom = magic[i].y + magic[i].height;
+
+			if (MY_CHECK_MAP1_ACT_COLL(magic[i].coll) == WOOD)
+			{
+
+			}
 		}
 	}
 
@@ -1616,6 +1683,11 @@ VOID COLL_PROC(VOID)
 	player.coll.CheckItem.left = player.coll.base.left + 10;
 	player.coll.CheckItem.top = player.coll.base.top;
 	player.coll.CheckItem.bottom = player.coll.base.bottom;
+
+	player.coll.CheckTop.right = player.coll.base.right;
+	player.coll.CheckTop.left = player.coll.base.left;
+	player.coll.CheckTop.top = player.coll.base.top + 10;
+	player.coll.CheckTop.bottom = player.coll.base.top;
 
 	player.coll.CheckBottom.right = player.coll.base.right;
 	player.coll.CheckBottom.left = player.coll.base.left;
@@ -1663,6 +1735,12 @@ VOID COLL_PROC(VOID)
 			}
 		}
 	}
+	if (MY_CHECK_MAP1_COLL(player.coll.CheckTop, &x, &y) == BLOCK)
+	{
+		player.CenterY = stage1[x][y].y + stage1[x][y].height + player.height / 2 + 10;
+		player.status = PLAYER_STATUS_STOP;
+		player.jump.cnt = 0;
+	}
 	if(MY_CHECK_MAP1_COLL(player.coll.CheckBottom, &x, &y) == BLOCK)//下に地面があったら着地
 	{
 		player.CenterY = stage1[x][y].y - player.height / 2 - 1;	//下の地面の上に立たせる
@@ -1683,7 +1761,7 @@ VOID COLL_PROC(VOID)
 	{
 		player.CanLeftMove = FALSE;//左に進めないようにする
 	}
-	if (MY_CHECK_MAP1_ITEM_COLL(player.coll.CheckItem) == GOAL)//ゴールに当たったとき
+	if (MY_CHECK_MAP1_ACT_COLL(player.coll.CheckItem) == GOAL)//ゴールに当たったとき
 	{
 		EndKind = GAME_CLEAR;	//エンドの種類はクリア
 		//ゴール時効果音
@@ -1750,7 +1828,7 @@ INT MY_CHECK_MAP1_COLL(RECT a,int *x, int *y)
 	return -1;
 }
 
-INT MY_CHECK_MAP1_ITEM_COLL(RECT a)
+INT MY_CHECK_MAP1_ACT_COLL(RECT a)
 {
 	for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
 	{
@@ -1767,6 +1845,11 @@ INT MY_CHECK_MAP1_ITEM_COLL(RECT a)
 					stage1[tate][yoko].kind = ae;
 					AvailableMagic++;
 					return BOOK;
+				}
+				if (stage1[tate][yoko].kind == ga)
+				{
+					stage1[tate][yoko].kind = ae;
+					return WOOD;
 				}
 			}
 		}
