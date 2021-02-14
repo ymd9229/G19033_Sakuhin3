@@ -418,7 +418,7 @@ GAME_MAP_KIND stage1Data[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX]{
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,af,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,ae,ae,ae,ae,af,af,ae,af,ae,af,ae,ae,ae,ae,ae,ae,af,ae,ae,ae,ae,ae,ae,ae,ae,
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,af,af,ae,ae,ae,ae,ae,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ga,ae,ae,ag,
 	aa,ae,ae,ae,ac,ae,ac,ae,ae,ae,ae,ae,ae,ae,ae,ad,ae,ae,ae,ha,ae,ae,ae,ae,ga,ae,ae,ad,af,af,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ad,ae,ae,ad,
-	aa,ab,ac,ab,bb,ae,bb,ab,ac,ab,ac,ab,ac,ab,ac,bc,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,bc,ac,ab,ac,ae,ae,ae,ae,ae,ae,ab,ac,ab,ac,ab,ac,ab,ac,ab,bc,ab,ac,bc,
+	ba,ab,ac,ab,bb,ae,bb,ab,ac,ab,ac,ab,ac,ab,ac,bc,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,bc,ac,ab,ac,ae,ae,ae,ae,ae,ae,ab,ac,ab,ac,ab,ac,ab,ac,ab,bc,ab,ac,bc,
 	ba,bb,bc,bb,bc,ae,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,ae,ae,ae,ae,ae,ae,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bd,
 };
 
@@ -430,7 +430,7 @@ GAME_MAP_KIND stage2Data[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX]{
 	ae,ae,ae,ae,ae,ae,af,af,af,af,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,ae,ae,ae,ae,ae,ae,ae,af,ae,ae,ae,
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,ae,ae,ae,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ga,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
 	aa,ae,ae,ae,ae,ae,ga,ae,ae,ha,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ac,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ac,ae,ae,ae,ae,ga,ae,ae,ae,ae,ae,ae,ac,ae,
-	aa,ab,ac,ab,ac,ab,bb,ab,ac,ab,ac,ab,ac,ab,ac,ab,ae,ae,ae,ab,ac,ab,ae,ae,bb,ab,ac,ab,ac,ab,ac,ae,ab,ac,ab,ac,bc,ac,ab,ac,ab,ac,ab,ae,ae,ac,ab,ac,bc,ac,
+	ba,ab,ac,ab,ac,ab,bb,ab,ac,ab,ac,ab,ac,ab,ac,ab,ae,ae,ae,ab,ac,ab,ae,ae,bb,ab,ac,ab,ac,ab,ac,ae,ab,ac,ab,ac,bc,ac,ab,ac,ab,ac,ab,ae,ae,ac,ab,ac,bc,ac,
 	ba,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,ae,ae,ae,bb,bc,bb,ae,ae,bc,bb,bc,bb,bc,bb,bc,ae,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,ae,ae,bc,bb,bc,bb,bc,
 };
 VOID MY_FPS_UPDATE(VOID);			//FPS値を計測、更新する関数
@@ -878,13 +878,13 @@ VOID MY_PLAY_DRAW(VOID)
 	STAGE_DRAW();
 	MAGIC_ICON_DRAW();
 	PLAYER_LIFE_DRAW();
-	DrawBox(player.coll.base.left, player.coll.base.top, player.coll.base.right, player.coll.base.bottom, GetColor(0, 0, 255), FALSE);
+	/*DrawBox(player.coll.base.left, player.coll.base.top, player.coll.base.right, player.coll.base.bottom, GetColor(0, 0, 255), FALSE);
 	DrawBox(player.coll.CheckRight.left, player.coll.CheckRight.top,
 		player.coll.CheckRight.right, player.coll.CheckRight.bottom,
 		GetColor(255, 0, 0), FALSE);
 	DrawBox(player.coll.CheckLeft.left, player.coll.CheckLeft.top,
 		player.coll.CheckLeft.right, player.coll.CheckLeft.bottom,
-		GetColor(0, 255, 0), FALSE);
+		GetColor(0, 255, 0), FALSE);*/
 	PLAYER_ATTACK_DRAW();
 	MAGIC_DRAW();
 	ENEMY_DRAW();
@@ -970,7 +970,7 @@ VOID MY_END_DRAW(VOID)
 		break;
 	}
 
-	DrawString(0, 0, "エンド画面(エスケープキーを押して下さい)", GetColor(255, 255, 255));
+	DrawString(0, 0, "エンド画面(エンターキーを押して下さい)", GetColor(255, 255, 255));
 	return;
 }
 
@@ -1198,10 +1198,10 @@ VOID STAGE_DRAW(VOID)
 				stage[tate][yoko].y,
 				mapchip.handle[stage[tate][yoko].kind],
 				TRUE);
-			DrawBox(stage[tate][yoko].x, stage[tate][yoko].y,
+			/*DrawBox(stage[tate][yoko].x, stage[tate][yoko].y,
 				stage[tate][yoko].x + stage[tate][yoko].width,
 				stage[tate][yoko].y + stage[tate][yoko].height,
-				GetColor(0, 255, 255), FALSE);
+				GetColor(0, 255, 255), FALSE);*/
 		}
 	}
 	if (book.IsDraw == TRUE)
