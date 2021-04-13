@@ -16,9 +16,8 @@
 #define MAGIC_DIV_WIDTH		80
 #define MAGIC_DIV_HEIGHT	80
 #define MAGIC_DIV_KIND   4
-#define MAGIC_DIV_STATE	 2
 #define MAGIC_DIV_TATE   4
-#define MAGIC_DIV_YOKO	 1
+#define MAGIC_DIV_YOKO	 3
 #define MAGIC_DIV_NUM   MAGIC_DIV_TATE * MAGIC_DIV_YOKO
 
 #define MAGIC_ICON_DIV_WIDTH	80
@@ -29,7 +28,7 @@
 
 #define PLAYER_TAMA_MAX 2
 #define PLAYER_MAGIC_MAX 3
-#define MAGIC_DATA_MAX 2
+#define MAGIC_DATA_MAX 3
 
 #define IMAGE_PLAYER_PATH       TEXT(".\\IMAGE\\player.png")
 #define IMAGE_PLAYER_TAMA_PATH  TEXT(".\\IMAGE\\tama.png")
@@ -55,6 +54,7 @@ enum MUKI	//向き
 enum SPEED_KIND		//様々な速度
 {
 	ENEMY_SPEED_SLOW = 1,		//遅い敵の速度
+	ENEMY_SPEED_NORMAL = 3,		//普通の敵の速度
 	PLAYER_SPEED_NORMAL = 5,	//プレイヤーの通常時の速度
 	PLAYER_TAMA_SPEED = 30,		//プレイヤーの通常攻撃の弾の速度
 };
@@ -107,6 +107,7 @@ typedef struct STRUCT_PLAYER	//プレイヤーの構造体
 	int NowJumpTimes = 0;
 	BOOL IsMove = FALSE;
 	BOOL IsScroll = FALSE;
+	BOOL IsBuff = FALSE;
 	PLAYER_ATTACK attack[PLAYER_TAMA_MAX];
 }PLAYER;
 
@@ -130,7 +131,6 @@ typedef struct STRUCT_MAGIC_DATA	//魔法のデータの構造体
 {
 	int StartX;
 	int StartY;
-	int CoolTime;
 	BOOL IsBuff = FALSE;
 	BOOL fiexd = FALSE;
 	char path[PATH_MAX];
@@ -157,12 +157,12 @@ extern PLAYER player;
 extern MAGIC magic[PLAYER_MAGIC_MAX];
 extern MAGIC_DATA MagicData[MAGIC_DATA_MAX];
 extern MAGIC_ICON MagicIcon;
-extern int JumpBuff;
+extern int JumpBuff;		//追加のジャンプ数
 extern int AvailableMagic;	//使用できる魔法の数
-extern int gravity;					//重力
-extern CNT FallTime;					//落下している時間をカウントする用
-extern int WalkCheckR;					//右に歩いているか調べるよう
-extern int WalkCheckL;					//左に歩いているか調べるよう
+extern int gravity;			//重力
+extern CNT FallTime;		//落下している時間をカウントする用
+extern int WalkCheckR;		//右に歩いているか調べるよう
+extern int WalkCheckL;		//左に歩いているか調べるよう
 
 VOID PLAYER_MOVE(VOID);		//プレイヤーの動きの処理
 VOID PLAYER_DRAW(VOID);		//プレイヤーの描画
@@ -178,15 +178,15 @@ INT MAGIC_CHECK(VOID);			//未使用の要素を探す
 VOID MAGIC_EFFECT(int);			//魔法ごとの効果の処理
 VOID MAGIC_ICON_DRAW(VOID);		//魔法のアイコンの描画
 
-VOID PLAYER_COLL(VOID);
-VOID PLAYER_ATTACK_COLL(VOID);
-VOID MAGIC_COLL(VOID);
+VOID PLAYER_COLL(VOID);			//プレイヤーの判定の処理
+VOID PLAYER_ATTACK_COLL(VOID);	//プレイヤーの攻撃の判定の処理
+VOID MAGIC_COLL(VOID);			//魔法の判定の処理
 
-VOID PLAYER_COLL_INIT(VOID);
-VOID PLAYER_ATTACK_COLL_INIT(VOID);
-VOID MAGIC_COLL_INIT(VOID);
+VOID PLAYER_COLL_INIT(VOID);	//プレイヤーの判定の初期化
+VOID PLAYER_ATTACK_COLL_INIT(VOID);		//プレイヤーの攻撃の判定の初期化
+VOID MAGIC_COLL_INIT(VOID);		//魔法の判定の初期化
 
-BOOL PLAYER_LOAD_IMAGE(VOID);
-VOID PLAYER_DELETE_IMAGE(VOID);
-BOOL PLAYER_LOAD_MUSIC(VOID);
-VOID PLAYER_DELETE_MUSIC(VOID);
+BOOL PLAYER_LOAD_IMAGE(VOID);	//プレイヤーの画像の読み込み
+VOID PLAYER_DELETE_IMAGE(VOID);	//プレイヤーの画像の削除
+BOOL PLAYER_LOAD_MUSIC(VOID);	//プレイヤー関連の音楽を読み込み
+VOID PLAYER_DELETE_MUSIC(VOID);	//プレイヤー関連の音楽を削除

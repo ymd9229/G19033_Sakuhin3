@@ -1,5 +1,38 @@
 #include "map.h"
 
+VOID STAGE_INIT(VOID)
+{
+	for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
+	{
+		for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
+		{
+			switch (NowStage)
+			{
+			case 1:
+				stage[tate][yoko].kind = stage1Data[tate][yoko];
+				break;
+			case 2:
+				stage[tate][yoko].kind = stage2Data[tate][yoko];
+				break;
+			case 3:
+				stage[tate][yoko].kind = stage3Data[tate][yoko];
+				break;
+			}
+
+			stage[tate][yoko].width = mapchip.width;
+			stage[tate][yoko].height = mapchip.height;
+			stage[tate][yoko].x = yoko * stage[tate][yoko].width;
+			stage[tate][yoko].y = tate * stage[tate][yoko].height;
+
+			if (stage[tate][yoko].kind == ha)
+			{
+				book.image.x = stage[tate][yoko].x;
+				book.image.y = stage[tate][yoko].y;
+			}
+		}
+	}
+}
+
 VOID STAGE_DRAW(VOID)
 {
 	for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
@@ -37,6 +70,10 @@ BOOL MAP_LOAD_IMAGE(VOID)
 			strcpy_s(StageBack[i].path, IMAGE_STAGE2_BACK_PATH);
 			StageBack[i].handle = LoadGraph(StageBack[i].path);
 			break;
+		case 2:
+			strcpy_s(StageBack[i].path, IMAGE_STAGE3_BACK_PATH);
+			StageBack[i].handle = LoadGraph(StageBack[i].path);
+			break;
 		}
 	}
 
@@ -46,8 +83,10 @@ BOOL MAP_LOAD_IMAGE(VOID)
 		MAP_DIV_WIDTH, MAP_DIV_HEIGHT,
 		&mapchip.handle[0]);
 	GetGraphSize(mapchip.handle[0], &mapchip.width, &mapchip.height);
+
 	return TRUE;
 }
+
 VOID MAP_DELETE_IMAGE(VOID)
 {
 	DeleteGraph(book.image.handle);
@@ -58,12 +97,14 @@ VOID MAP_DELETE_IMAGE(VOID)
 	}
 
 }
+
 BOOL MAP_LOAD_MUSIC(VOID)
 {
 	strcpy_s(Stage1BGM.path, MUSIC_STAGE1_BGM_PATH);
 	Stage1BGM.handle = LoadSoundMem(Stage1BGM.path);
 	return TRUE;
 }
+
 VOID MAP_DELETE_MUSIC(VOID)
 {
 	DeleteSoundMem(Stage1BGM.handle);

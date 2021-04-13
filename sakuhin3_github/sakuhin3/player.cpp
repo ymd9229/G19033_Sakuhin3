@@ -1,6 +1,7 @@
 #include "player.h"
 #include "enemy.h"
 #include "map.h"
+
 VOID PLAYER_MOVE(VOID)
 {
 	player.IsMove = FALSE;
@@ -76,7 +77,7 @@ VOID PLAYER_MOVE(VOID)
 			}
 		}
 
-		if (MY_KEY_DOWN_PRECEDENCE(KEY_INPUT_UP) == TRUE)
+		if (MY_KEY_DOWN_PRECEDENCE(KEY_INPUT_UP,30) == TRUE)
 		{
 			if (player.NowJumpTimes < player.CanJumpTimes &&
 				player.status != PLAYER_STATUS_JUMP &&
@@ -229,12 +230,16 @@ VOID MAGIC_PROC(VOID)
 				magic[i].IsBuff = MagicData[player.EquipMagic].IsBuff;
 				magic[i].width = MagicData[0].width;
 				magic[i].height = MagicData[0].height;
-				//player.MagicInterval.CntMax = MagicData[player.EquipMagic].CoolTime;
 
 				magic[i].x = magic[i].CenterX - magic[i].width / 2;
 				magic[i].y = magic[i].CenterY - magic[i].height / 2;
 
 				magic[i].IsDraw = TRUE;
+				if (player.IsBuff == TRUE && magic[i].IsBuff == TRUE)
+				{
+					magic[i].IsDraw = FALSE;
+				}
+
 				player.CanMagic = FALSE;
 			}
 		}
@@ -262,16 +267,24 @@ VOID MAGIC_SELECT(VOID)
 	if (MY_KEY_DOWN_MOMENT(KEY_INPUT_Z) == TRUE)
 	{
 		if (-1 < player.EquipMagic)	//選択中の魔法の番号が-1より大きいとき(-1は選択なし)
+		{
 			player.EquipMagic--;	//一つ前の魔法を選択
+		}
 		else						//選択魔法が-1(選択なし)のとき
+		{
 			player.EquipMagic = AvailableMagic - 1;	//最後尾の魔法を選択
+		}
 	}
 	else if (MY_KEY_DOWN_MOMENT(KEY_INPUT_X) == TRUE)
 	{
 		if (AvailableMagic - 1 > player.EquipMagic)	//選択中の魔法の番号が取得済み魔法数の未満のとき
+		{
 			player.EquipMagic++;
+		}
 		else							//選択魔法が最後尾のとき
-			player.EquipMagic = -1;		//-1(選択なし)に戻す		
+		{
+			player.EquipMagic = -1;		//-1(選択なし)に戻す	
+		}
 	}
 }
 
@@ -299,10 +312,69 @@ VOID MAGIC_EFFECT(int i)
 		break;
 	case 1:
 		JumpBuff = 1;
-		magic[i].IsDraw = FALSE;
+		player.IsBuff = TRUE;
+		if (player.EquipMagic != 1)
+		{
+			magic[i].IsDraw = FALSE;
+			player.IsBuff = FALSE;
+		}
+		break;
+	case 2:
+		if (magic[i].muki == MUKI_R)
+			magic[i].CenterX += 10;
+		if (magic[i].muki == MUKI_L)
+			magic[i].CenterX -= 10;
 		break;
 	}
 }
+
+VOID MAGIC_DRAW(VOID)
+{
+	for (int i = 0; i < PLAYER_MAGIC_MAX; i++)
+	{
+		if (magic[i].IsDraw == TRUE)
+		{
+			if (magic[i].IsBuff == FALSE)
+			{
+				magic[i].x = magic[i].CenterX - magic[i].width / 2;
+				magic[i].y = magic[i].CenterY - magic[i].height / 2;
+			}
+			else
+			{
+				magic[i].x = player.x;
+				magic[i].y = player.y;
+			}
+
+			magic[i].change.CntMax = 20;
+			magic[i].change.cnt = CNT_CHECK(magic[i].change.cnt, magic[i].change.CntMax);
+
+			if (magic[i].change.cnt == 0)
+			{
+				if (magic[i].change.NowImage >= magic[i].No * MAGIC_DIV_KIND && 
+					magic[i].change.NowImage < magic[i].No * MAGIC_DIV_KIND + MAGIC_DIV_KIND - 1)
+				{
+					magic[i].change.NowImage++;
+				}
+				else
+				{
+					magic[i].change.NowImage = magic[i].No * MAGIC_DIV_KIND;
+				}
+			}
+
+			DrawGraph(magic[i].x, magic[i].y, MagicData[0].handle[magic[i].change.NowImage], true);
+			
+			//画面外に出たら描画をやめる
+			if (magic[i].CenterX < 0 || magic[i].CenterX > GAME_WIDTH)
+			{
+				magic[i].IsDraw = FALSE;
+			}
+		}
+		else
+		{
+			magic[i].change.cnt = magic[i].change.CntMax;
+		}
+	}
+};
 
 VOID PLAYER_DRAW(VOID)	//プレイヤーの描画
 {
@@ -349,9 +421,9 @@ VOID PLAYER_DRAW(VOID)	//プレイヤーの描画
 			break;
 		}
 		player.change.cnt = CNT_CHECK(player.change.cnt, player.change.CntMax);
-		if (player.change.cnt == 0)
+		if (player.change.cnt == 0)	//一定カウントごとに画像を変える
 		{
-			if (player.status == PLAYER_STATUS_MOVE_R)
+			if (player.status == PLAYER_STATUS_MOVE_R)	//右に歩いているとき
 			{
 				if (player.change.NowImage < PLAYER_DIV_WALK_R + PLAYER_DIV_TATE - 1)
 				{
@@ -362,7 +434,7 @@ VOID PLAYER_DRAW(VOID)	//プレイヤーの描画
 					player.change.NowImage = PLAYER_DIV_WALK_R;
 				}
 			}
-			if (player.status == PLAYER_STATUS_MOVE_L)
+			if (player.status == PLAYER_STATUS_MOVE_L)	//左に歩いているとき
 			{
 				if (player.change.NowImage < PLAYER_DIV_WALK_L + PLAYER_DIV_TATE - 1 &&
 					player.change.NowImage >= PLAYER_DIV_WALK_L)
@@ -387,6 +459,7 @@ VOID PLAYER_ATTACK_DRAW(VOID)
 			DrawGraph(player.attack[i].image.x,
 				player.attack[i].image.y,
 				player.attack[0].image.handle, TRUE);
+			//向きごとに処理
 			if (player.attack[i].muki == MUKI_R)
 			{
 				if (player.attack[i].image.x + player.attack[i].image.width > GAME_WIDTH)
@@ -414,40 +487,7 @@ VOID PLAYER_ATTACK_DRAW(VOID)
 	}
 }
 
-VOID MAGIC_DRAW(VOID)
-{
 
-	for (int i = 0; i < PLAYER_MAGIC_MAX; i++)
-	{
-		if (magic[i].IsDraw == TRUE)
-		{
-			magic[i].x = magic[i].CenterX - magic[i].width / 2;
-			magic[i].y = magic[i].CenterY - magic[i].height / 2;
-
-			magic[i].change.CntMax = 20;
-			magic[i].change.cnt = CNT_CHECK(magic[i].change.cnt, magic[i].change.CntMax);
-			if (magic[i].change.cnt == 0)
-			{
-				if (magic[i].change.NowImage < magic[i].No * MAGIC_DIV_KIND + MAGIC_DIV_STATE)
-				{
-					magic[i].change.NowImage++;
-				}
-				else
-				{
-					magic[i].change.NowImage = magic[i].No * MAGIC_DIV_KIND;
-				}
-			}
-			if (magic[i].IsBuff == FALSE)
-			{
-				DrawGraph(magic[i].x, magic[i].y, MagicData[0].handle[magic[i].change.NowImage], true);
-			}
-			if (magic[i].CenterX < 0 || magic[i].CenterX > GAME_WIDTH)
-			{
-				magic[i].IsDraw = FALSE;
-			}
-		}
-	}
-};
 
 VOID PLAYER_LIFE_DRAW(VOID)
 {
@@ -476,36 +516,27 @@ VOID PLAYER_COLL(VOID)
 		if (player.status != PLAYER_STATUS_JUMP)	//プレイヤーの状態がジャンプ以外の時
 		{
 			player.CenterY += gravity;		//重力をかける
-			//空中にいる時間によって重力が大きくなっていく(重力加速度風)
-			FallTime.cnt = CNT_CHECK(FallTime.cnt, FallTime.CntMax);
-			if (FallTime.cnt == 0)
-			{
-				gravity += 1;
-			}
 			if (player.NowJumpTimes == 0)
 			{
 				player.CanJumpTimes = 0;
 			}
 		}
 	}
-	if (MY_CHECK_MAP1_COLL(player.coll.CheckTop, &x, &y) == BLOCK)
+	if (MY_CHECK_MAP1_COLL(player.coll.CheckTop, &x, &y) == BLOCK)//上に障害物があったとき
 	{
 		player.CenterY = stage[x][y].y + stage[x][y].height + player.height / 2 + 10;
-		player.status = PLAYER_STATUS_STOP;
-		player.jump.cnt = 0;
+		player.jump.cnt = player.jump.CntMax;
 	}
 	if (MY_CHECK_MAP1_COLL(player.coll.CheckBottom, &x, &y) == BLOCK)//下に地面があったら着地
 	{
 		player.CenterY = stage[x][y].y - player.height / 2 - 1;	//下の地面の上に立たせる
-		FallTime.cnt = 0;	//落下時のカウントの初期化
-		gravity = 10;	//重力をもとに戻す
-		if (player.NowJumpTimes == player.CanJumpTimes &&
-			player.NowJumpTimes > 0)
+		
+		if(player.EquipMagic != 1)
 		{
 			JumpBuff = 0;
 		}
-		player.NowJumpTimes = 0;
-		player.CanJumpTimes = 1 + JumpBuff;
+		player.NowJumpTimes = 0;			//現在のジャンプ数を０に戻す
+		player.CanJumpTimes = 1 + JumpBuff;	//可能なジャンプ数決める
 	}
 	if (MY_CHECK_MAP1_COLL(player.coll.CheckRight, &x, &y) == BLOCK)//右に障害物
 	{
@@ -533,10 +564,12 @@ VOID PLAYER_COLL(VOID)
 		}
 		GameScene = GAME_SCENE_END;	//シーンをエンド画面に遷移
 	}
-	if (MY_CHECK_ENEMY_COLL(player.coll.base) != -1 && player.life.invincible == FALSE)
+	
+
+	if (MY_CHECK_ENEMY_COLL(player.coll.base) != -1 && player.life.invincible == FALSE)//敵に当たったとき
 	{
-		player.life.invincible = TRUE;
-		player.life.now--;
+		player.life.invincible = TRUE;	//無敵状態にする
+		player.life.now--;		//ライフを一つ減らす
 		if (CheckSoundMem(HitSE.handle) == 0)
 		{
 			ChangeVolumeSoundMem(255 * 30 / 100, HitSE.handle);//30%のボリューム
@@ -576,27 +609,58 @@ VOID PLAYER_ATTACK_COLL(VOID)
 
 }
 
+VOID MAGIC_COLL_INIT(VOID)
+{
+	for (int i = 0; i < PLAYER_MAGIC_MAX; i++)
+	{
+		if (magic[i].IsDraw == TRUE && magic[i].IsBuff == FALSE)
+		{
+			magic[i].coll.right = magic[i].x + magic[i].width;
+			magic[i].coll.left = magic[i].x;
+			magic[i].coll.top = magic[i].y;
+			magic[i].coll.bottom = magic[i].y + magic[i].height;
+		}
+	}
+}
+
 VOID MAGIC_COLL(VOID)
 {
 	int x, y;
-	
 
 	for (int i = 0; i < PLAYER_MAGIC_MAX; i++)
 	{
 		if (magic[i].IsDraw == TRUE && magic[i].IsBuff == FALSE)
 		{
 			if (MY_CHECK_MAP1_ACT_COLL(magic[i].coll, &x, &y) == WOOD &&
-				magic[i].No == 0)
+				magic[i].No == 0)		//炎の魔法が木に当たったとき
 			{
 				stage[x][y].kind = ae;
+			}
+			if (MY_CHECK_MAP1_ACT_COLL(magic[i].coll, &x, &y) == MOVE_BLOCK &&
+				magic[i].No == 2)		//風の魔法が動くブロックに当たったとき
+			{
+				magic[i].IsDraw = FALSE;
+				//一マスブロックの位置をずらす
+				if (magic[i].muki == MUKI_R && stage[x][y + 1].kind == ae)
+				{
+					stage[x][y].kind = ae;
+					stage[x][y + 1].kind = bf;
+				}
+				if (magic[i].muki == MUKI_L && stage[x][y - 1].kind == ae)
+				{
+					stage[x][y].kind = ae;
+					stage[x][y - 1].kind = bf;
+				}
+			}
+			if (MY_CHECK_MAP1_COLL(magic[i].coll, &x, &y) == BLOCK &&	//ブロックに魔法が当たったとき
+				magic[i].IsBuff == FALSE)
+			{
+				magic[i].IsDraw = FALSE;	//描画をやめる
 			}
 		}
 	}
 
 }
-
-
-
 
 VOID PLAYER_COLL_INIT(VOID)
 {
@@ -605,7 +669,7 @@ VOID PLAYER_COLL_INIT(VOID)
 	player.coll.base.top = player.y;
 	player.coll.base.bottom = player.y + player.height;
 
-	if (player.status == PLAYER_STATUS_SQUAT)
+	if (player.status == PLAYER_STATUS_SQUAT)//しゃがんでいるとき
 	{
 		player.coll.base.top = player.y + player.height / 2;
 	}
@@ -636,6 +700,8 @@ VOID PLAYER_COLL_INIT(VOID)
 	player.coll.CheckLeft.bottom = player.coll.base.bottom;
 }
 
+
+
 VOID PLAYER_ATTACK_COLL_INIT(VOID)
 {
 	for (int i = 0; i < PLAYER_TAMA_MAX; i++)
@@ -651,19 +717,7 @@ VOID PLAYER_ATTACK_COLL_INIT(VOID)
 	}
 }
 
-VOID MAGIC_COLL_INIT(VOID)
-{
-	for (int i = 0; i < PLAYER_MAGIC_MAX; i++)
-	{
-		if (magic[i].IsDraw == TRUE && magic[i].IsBuff == FALSE)
-		{
-			magic[i].coll.right = magic[i].x + magic[i].width;
-			magic[i].coll.left = magic[i].x;
-			magic[i].coll.top = magic[i].y;
-			magic[i].coll.bottom = magic[i].y + magic[i].height;
-		}
-	}
-}
+
 
 BOOL PLAYER_LOAD_IMAGE(VOID)
 {

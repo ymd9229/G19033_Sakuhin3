@@ -7,9 +7,13 @@ ENEMY_DATA EnemyData[ENEMY_DATA_MAX] = {
 	//｛敵の出現位置X、敵の出現位置Y、敵の種類、登場するステージ、飛行するかどうか｝
 	{700,480,0,1,FALSE},
 	{3500,480,0,1,FALSE},
-	{500,480,0,2,FALSE},
+	{500,320,0,2,FALSE},
 	{3000,240,1,2,TRUE},
 	{2500,240,1,2,TRUE},
+	{480,320,2,3,FALSE},
+	{960,480,0,3,FALSE},
+	{3520,480,2,3,FALSE},
+	{3680,80,1,3,TRUE},
 };	//敵のデータ
 ENEMY_DATA EnemyImage[ENEMY_IMAGE_KIND];
 ENEMY enemy[ENEMY_MAX];
@@ -17,7 +21,7 @@ IMAGE TitleBack;		//タイトル背景
 IMAGE TitleRogo;		//タイトルロゴ
 IMAGE ClearRogo;		//ゲームクリア時のロゴ
 IMAGE OverRogo;			//ゲームオーバー時のロゴ
-IMAGE GoalRogo;
+IMAGE GoalRogo;			//ゴール時のロゴ
 IMAGE ClearBack;		//クリア時の背景
 IMAGE OverBack;			//ゲームオーバー時の背景
 IMAGE PlayerLife;
@@ -28,8 +32,9 @@ PLAYER player;
 MAGIC_BOOK book;
 MAGIC magic[PLAYER_MAGIC_MAX];
 MAGIC_DATA MagicData[MAGIC_DATA_MAX] = {
-	{0,0,0,FALSE,FALSE,},
-	{0,0,0,TRUE,FALSE,},
+	{0,0,FALSE,FALSE,},
+	{0,0,TRUE,FALSE,},
+	{0,0,FALSE,FALSE,},
 };
 MAGIC_ICON MagicIcon;
 int EndKind;                    //クリアかゲームオーバーか
@@ -43,15 +48,15 @@ BOOL IsPrecedence[256];
 int GameScene;					//ゲームシーンを管理
 int NowStage;					//何ステージ目か
 int gravity;					//重力
-CNT FallTime;					//落下している時間をカウントする用
-CNT precdence[256];
+CNT precdence[256];				//先行入力のカウント用
 int WalkCheckR;					//右に歩いているか調べるよう
 int WalkCheckL;					//左に歩いているか調べるよう
-int JumpBuff = 0;
+int JumpBuff = 0;				//追加のジャンプ数
 int AvailableMagic = 0;	//使用できる魔法の数
 MUSIC TitleBGM;			//タイトルの音楽
 MUSIC Stage1BGM;		//ステージ１の音楽
 MUSIC GameClearBGM;		//クリアした時の音楽
+MUSIC GameOverBGM;		//ゲームオーバー時の音楽
 MUSIC AttackSE;			//通常攻撃時の効果音
 MUSIC DefeatSE;			//敵を倒したときの効果音
 MUSIC GoalSE;			//ゴールしたときの効果音
@@ -67,8 +72,8 @@ GAME_MAP_KIND stage1Data[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX]{
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,ae,ae,ae,ae,ae,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,af,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,ae,ae,ae,ae,af,af,ae,af,ae,af,ae,ae,ae,ae,ae,ae,af,ae,ae,ae,ae,ae,ae,ae,ae,
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,af,af,ae,ae,ae,ae,ae,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ga,ae,ae,ag,
-	aa,ae,ae,ae,ac,ae,ac,ae,ae,ae,ae,ae,ae,ae,ae,ad,ae,ae,ae,ha,ae,ae,ae,ae,ga,ae,ae,ad,af,af,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ad,ae,ae,ad,
-	ba,ab,ac,ab,bb,ae,bb,ab,ac,ab,ac,ab,ac,ab,ac,bc,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,bc,ac,ab,ac,ae,ae,ae,ae,ae,ae,ab,ac,ab,ac,ab,ac,ab,ac,ab,bc,ab,ac,bc,
+	aa,ae,ae,ae,ac,ae,ac,ae,ae,ae,ae,ae,ae,ae,ae,ad,ae,ae,ae,ha,ae,ae,ae,ae,ga,ae,ae,af,af,af,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ad,ae,ae,ad,
+	ba,ab,ac,ab,bb,ae,bb,ab,ac,ab,ac,ab,ac,ab,ac,bc,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ac,ac,ab,ac,ae,ae,ae,ae,ae,ae,ab,ac,ab,ac,ab,ac,ab,ac,ab,bc,ab,ac,bc,
 	ba,bb,bc,bb,bc,ae,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,ae,ae,ae,ae,ae,ae,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bd,
 };
 
@@ -80,8 +85,20 @@ GAME_MAP_KIND stage2Data[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX]{
 	ae,ae,ae,ae,ae,ae,af,af,af,af,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,ae,ae,ae,ae,ae,ae,ae,af,ae,ae,ae,
 	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,ae,ae,ae,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ga,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,
 	aa,ae,ae,ae,ae,ae,ga,ae,ae,ha,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ac,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ac,ae,ae,ae,ae,ga,ae,ae,ae,ae,ae,ae,ac,ae,
-	ba,ab,ac,ab,ac,ab,bb,ab,ac,ab,ac,ab,ac,ab,ac,ab,ae,ae,ae,ab,ac,ab,ae,ae,bb,ab,ac,ab,ac,ab,ac,ae,ab,ac,ab,ac,bc,ac,ab,ac,ab,ac,ab,ae,ae,ac,ab,ac,bc,ac,
+	ba,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ae,ae,ae,ab,ac,ab,ae,ae,bb,ab,ac,ab,ac,ab,ac,ae,ab,ac,ab,ac,bc,ac,ab,ac,ab,ac,ab,ae,ae,ac,ab,ac,bc,ac,
 	ba,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,ae,ae,ae,bb,bc,bb,ae,ae,bc,bb,bc,bb,bc,bb,bc,ae,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,ae,ae,bc,bb,bc,bb,bc,
+};
+
+GAME_MAP_KIND stage3Data[GAME_MAP_TATE_MAX][GAME_MAP_YOKO_MAX]{
+	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,af,af,af,af,af,af,af,ae,ae,ae,ae,ae,ae,ae,ae,af,
+	ae,ae,ae,ae,ae,ae,ae,ga,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,
+	ae,ae,ae,ae,ae,ae,ae,af,ae,ae,ha,ae,ae,ae,ae,ae,ae,ae,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,ae,ae,af,
+	ae,ae,ae,af,ae,ae,ae,af,af,af,af,ae,ae,ae,ae,ae,ae,ae,af,ae,ae,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,ae,bf,ae,ae,ae,ae,af,ae,ae,ae,ae,ae,bf,ae,ae,af,
+	ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,ae,ae,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,af,af,af,af,ae,ae,af,ae,ae,ae,ae,ae,bf,ae,ae,af,
+	ae,ae,ae,ae,ae,ac,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,af,ae,af,ae,ae,ae,bf,ae,af,af,
+	ae,ae,ae,ae,ab,bc,ae,ae,ae,ae,ae,ae,af,ae,ae,ae,ae,ae,bf,ae,ae,af,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ae,ga,ae,ae,af,ae,ae,ae,ae,ae,bf,ae,ae,af,
+	ab,ac,ab,ac,bc,bb,ab,ac,ab,ac,ab,ac,ab,ae,ae,ac,ab,ac,ab,ac,ab,ac,ab,ac,ae,bf,ae,ae,ae,ae,ae,ae,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ac,ab,ae,ag,ac,
+	bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,ae,ae,bc,bb,bc,bb,bc,bb,bc,bb,bc,ab,ae,ae,ae,ae,ae,ae,ae,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,bc,bb,ac,ab,bc,
 };
 
 
@@ -93,16 +110,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	SetMainWindowText(TEXT(GAME_WINDOW_NAME));	//ウィンドウのタイトルの文字
 
 	if (DxLib_Init() == -1) { return -1; }	//ＤＸライブラリ初期化処理
+
 	SetDrawScreen(DX_SCREEN_BACK);	//Draw系関数は裏画面に描画
+
 	if (MY_LOAD_IMAGE() == FALSE) { return -1; }
 	if (MY_LOAD_MUSIC() == FALSE) { return -1; }
+
 	while (TRUE)
 	{
 		if (ProcessMessage() != 0) { break; }	//メッセージ処理の結果がエラーのとき、強制終了
-
 		if (ClearDrawScreen() != 0) { break; }	//画面を消去できなかったとき、強制終了
 
-		MY_ALL_KEYDOWN_UPDATE();				//押しているキー状態を取得
+		MY_ALL_KEYDOWN_UPDATE();	//押しているキー状態を取得
 		MY_FPS_UPDATE();	//FPSの処理[更新]
 
 		switch (GameScene)
@@ -120,7 +139,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			MY_POSE();  //ポーズ画面
 			break;
 		}
-
 		ScreenFlip();		//モニタのリフレッシュレートの速さで裏画面を再描画
 	}
 
@@ -159,7 +177,7 @@ VOID MY_FPS_DRAW(VOID)
 
 VOID MY_FPS_WAIT(VOID)
 {
-	int resultTime = GetNowCount() - StartTimeFps;					//かかった時間
+	int resultTime = GetNowCount() - StartTimeFps;	//かかった時間
 	int waitTime = CountFps * 1000 / GAME_FPS - resultTime;	//待つべき時間
 
 	if (waitTime > 0)		//指定のFPS値よりも早い場合
@@ -249,11 +267,12 @@ BOOL MY_KEY_DOWN_MOMENT(int KEY_INPUT_)
 	return FALSE;	//押し始めていない
 }
 
-BOOL MY_KEY_DOWN_PRECEDENCE(int key)
+BOOL MY_KEY_DOWN_PRECEDENCE(int key,int cnt)
 {
+	//先行入力可能になったらカウントを始める
 	if (IsPrecedence[key] == TRUE)
 	{
-		precdence[key].CntMax = 30;
+		precdence[key].CntMax = cnt;
 		precdence[key].cnt = CNT_CHECK(precdence[key].cnt, precdence[key].CntMax);
 		if (precdence[key].cnt != 0)
 		{
@@ -261,7 +280,7 @@ BOOL MY_KEY_DOWN_PRECEDENCE(int key)
 		}
 		else
 		{
-			IsPrecedence[key] = FALSE;
+			IsPrecedence[key] = FALSE;//先行入力の時間を終える
 			return FALSE;
 		}
 	}
@@ -280,7 +299,6 @@ VOID MY_GAME_INIT(VOID)
 	player.change.CntMax = 20;
 	player.MagicInterval.CntMax = 60;
 	AvailableMagic = 0;
-	FallTime.CntMax = 10;
 
 	book.IsDraw = TRUE;
 
@@ -288,7 +306,7 @@ VOID MY_GAME_INIT(VOID)
 	MagicIcon.x = GAME_WIDTH - MagicIcon.width;
 	MagicIcon.y = 0;
 
-	MY_PLAY_INIT();
+	MY_PLAY_INIT();//プレイ画面に入るときのみの初期化
 }
 
 VOID MY_PLAY_INIT(VOID)
@@ -331,34 +349,7 @@ VOID MY_PLAY_INIT(VOID)
 	STAGE_INIT();
 }
 
-VOID STAGE_INIT(VOID)
-{
-	for (int tate = 0; tate < GAME_MAP_TATE_MAX; tate++)
-	{
-		for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
-		{
-			switch (NowStage)
-			{
-			case 1:
-				stage[tate][yoko].kind = stage1Data[tate][yoko];
-				break;
-			case 2:
-				stage[tate][yoko].kind = stage2Data[tate][yoko];
-				break;
-			}
-			stage[tate][yoko].width = mapchip.width;
-			stage[tate][yoko].height = mapchip.height;
-			stage[tate][yoko].x = yoko * stage[tate][yoko].width;
-			stage[tate][yoko].y = tate * stage[tate][yoko].height;
 
-			if (stage[tate][yoko].kind == ha)
-			{
-				book.image.x = stage[tate][yoko].x;
-				book.image.y = stage[tate][yoko].y;
-			}
-		}
-	}
-}
 
 VOID MY_START(VOID)
 {
@@ -374,11 +365,6 @@ VOID MY_START_PROC(VOID)
 	if (CheckSoundMem(TitleBGM.handle) == 0)
 	{
 		ChangeVolumeSoundMem(255 * 50 / 100, TitleBGM.handle);	//50%の音量にする
-
-		//BGMを流す
-		//DX_PLAYTYPE_NORMAL:　ノーマル再生
-		//DX_PLAYTYPE_BACK  : バックグラウンド再生
-		//DX_PLAYTYPE_LOOP  : ループ再生
 		PlaySoundMem(TitleBGM.handle, DX_PLAYTYPE_LOOP);
 	}
 	//エンターキーを押したら、プレイシーンへ移動する
@@ -426,10 +412,10 @@ VOID MY_PLAY_PROC(VOID)
 		ChangeVolumeSoundMem(255 * 50 / 100, Stage1BGM.handle);	//50%の音量にする
 		PlaySoundMem(Stage1BGM.handle, DX_PLAYTYPE_LOOP);
 	}
-	PLAYER_MOVE();		//プレイヤーの動きの処理
-	ENEMY_PROC();		//敵の処理
-	STAGE_SCROLL();		//ステージのスクロールの処理
-	COLL_PROC();		//判定の処理
+	PLAYER_MOVE();		
+	ENEMY_PROC();		
+	STAGE_SCROLL();		
+	COLL_PROC();		
 
 	if (MY_KEY_DOWN_MOMENT(KEY_INPUT_TAB) == TRUE)
 	{
@@ -457,7 +443,6 @@ VOID MY_PLAY_DRAW(VOID)
 	PLAYER_ATTACK_DRAW();
 	MAGIC_DRAW();
 	ENEMY_DRAW();
-
 	return;
 }
 
@@ -476,6 +461,7 @@ VOID MY_END_PROC(VOID)
 	{
 		StopSoundMem(Stage1BGM.handle);
 	}
+
 	switch (EndKind)
 	{
 	case GAME_CLEAR:
@@ -493,6 +479,11 @@ VOID MY_END_PROC(VOID)
 		}
 		break;
 	case GAME_OVER:
+		if (CheckSoundMem(GameOverBGM.handle) == 0)
+		{
+			ChangeVolumeSoundMem(255 * 50 / 100, GameOverBGM.handle);
+			PlaySoundMem(GameOverBGM.handle, DX_PLAYTYPE_LOOP);
+		}
 		break;
 	}
 	if (MY_KEY_DOWN_MOMENT(KEY_INPUT_RETURN) == TRUE)
@@ -500,6 +491,10 @@ VOID MY_END_PROC(VOID)
 		if (CheckSoundMem(GameClearBGM.handle) != 0)
 		{
 			StopSoundMem(GameClearBGM.handle);	//BGMを止める
+		}
+		if (CheckSoundMem(GameOverBGM.handle) != 0)
+		{
+			StopSoundMem(GameOverBGM.handle);	//BGMを止める
 		}
 		if (EndKind == GAME_OVER)
 		{
@@ -519,7 +514,6 @@ VOID MY_END_PROC(VOID)
 	}
 	return;
 }
-
 
 VOID MY_END_DRAW(VOID)
 {
@@ -564,7 +558,7 @@ VOID MY_POSE_PROC(VOID)
 	return;
 }
 
-VOID MY_POSE_DRAW(VOID)		//ポーズ画面の描画
+VOID MY_POSE_DRAW(VOID)		
 {
 	if (GetMovieStateToGraph(PoseIn.handle) == 0 &&
 		PoseIn.IsViewed == FALSE)
@@ -632,6 +626,8 @@ BOOL MY_LOAD_MUSIC(VOID)
 	TitleBGM.handle = LoadSoundMem(TitleBGM.path);
 	strcpy_s(GameClearBGM.path, MUSIC_CLEAR_BGM_PATH);
 	GameClearBGM.handle = LoadSoundMem(GameClearBGM.path);
+	strcpy_s(GameOverBGM.path, MUSIC_OVER_BGM_PATH);
+	GameOverBGM.handle = LoadSoundMem(GameOverBGM.path);
 	strcpy_s(GoalSE.path, MUSIC_GOAL_SE_PATH);
 	GoalSE.handle = LoadSoundMem(GoalSE.path);
 	
@@ -648,6 +644,7 @@ VOID MY_DELETE_MUSIC(VOID)
 	MAP_DELETE_MUSIC();
 	DeleteSoundMem(TitleBGM.handle);
 	DeleteSoundMem(GameClearBGM.handle);
+	DeleteSoundMem(GameOverBGM.handle);
 	DeleteSoundMem(GoalSE.handle);
 }
 
@@ -710,8 +707,10 @@ INT MY_CHECK_MAP1_COLL(RECT a,int *x, int *y)
 					stage[tate][yoko].kind != ag &&
 					stage[tate][yoko].kind != ha)
 				{
-					*x = tate;
+					//現在のマスの位置
 					*y = yoko;
+					*x = tate;
+
 					return BLOCK;
 				}
 			}
@@ -728,8 +727,11 @@ INT MY_CHECK_MAP1_ACT_COLL(RECT a, int* x, int* y)
 		{
 			if (MY_CHECK_RECT_COLL(stage[tate][yoko].coll, a) == TRUE)
 			{
+				//現在のマスの位置
 				*x = tate;
 				*y = yoko;
+
+				//当たったものによって戻り値を変える
 				if (stage[tate][yoko].kind == ag)
 				{
 					return GOAL;
@@ -741,6 +743,10 @@ INT MY_CHECK_MAP1_ACT_COLL(RECT a, int* x, int* y)
 				if (stage[tate][yoko].kind == ga)
 				{
 					return WOOD;
+				}
+				if (stage[tate][yoko].kind == bf)
+				{
+					return MOVE_BLOCK;
 				}
 			}
 		}
@@ -771,13 +777,13 @@ VOID STAGE_SCROLL(VOID)
 			{
 				for (int yoko = 0; yoko < GAME_MAP_YOKO_MAX; yoko++)
 				{
-					stage[tate][yoko].x -= PLAYER_SPEED_NORMAL;
+					stage[tate][yoko].x -= PLAYER_SPEED_NORMAL;		//ステージのスクロール	
 				}
 			}
 			book.image.x -= PLAYER_SPEED_NORMAL;
 			for (int n = 0; n < ENEMY_MAX; n++)
 			{
-				enemy[n].CenterX -= PLAYER_SPEED_NORMAL;
+				enemy[n].CenterX -= PLAYER_SPEED_NORMAL;	//敵のスクロール
 			}
 			screen.right += PLAYER_SPEED_NORMAL;
 			screen.left += PLAYER_SPEED_NORMAL;
